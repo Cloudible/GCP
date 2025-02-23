@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCP 프로젝트 등록</title>
+  <style>
+    body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        text-align: center;
+    }
+    textarea {
+        width: 100%;
+        height: 150px;
+    }
+    input, button {
+        width: 100%;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 16px;
+    }
+    button {
+        background-color: #4285F4;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #357ae8;
+    }
+  </style>
+</head>
+<body>
+
+<h2>GCP 프로젝트 등록</h2>
+
+<label for="userId">사용자 ID:</label>
+<input type="text" id="userId" placeholder="사용자 ID 입력">
+
+<label for="projectId">GCP 프로젝트 ID:</label>
+<input type="text" id="projectId" placeholder="GCP 프로젝트 ID 입력">
+
+<label for="credentialsJson">GCP 서비스 계정 키 (JSON):</label>
+<textarea id="credentialsJson" placeholder="여기에 JSON 키 입력"></textarea>
+
+<button onclick="registerProject()">프로젝트 등록</button>
+
+<p id="message"></p>
+
+<script>
+  function registerProject() {
+      const userId = document.getElementById("userId").value;
+      const projectId = document.getElementById("projectId").value;
+      const credentialsJson = document.getElementById("credentialsJson").value;
+
+      if (!userId || !projectId || !credentialsJson) {
+          document.getElementById("message").innerText = "❌ 모든 필드를 입력하세요!";
+          return;
+      }
+
+      const requestData = {
+          userId: userId,
+          projectId: projectId,
+          credentialsJson: btoa(credentialsJson) // Base64로 인코딩하여 전송
+      };
+
+      fetch("http://localhost:8080/api/gcp/register", {
+          method: "POST",
+          headers: {
+              "Content-Type": "application/json"
+          },
+          body: JSON.stringify(requestData)
+      })
+      .then(response => response.text())
+      .then(data => {
+          document.getElementById("message").innerText = `✅ ${data}`;
+      })
+      .catch(error => {
+          document.getElementById("message").innerText = "❌ 등록 중 오류 발생!";
+          console.error("Error:", error);
+      });
+  }
+</script>
+
+</body>
+</html>

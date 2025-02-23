@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCP 네트워크 트래픽 분석</title>
+  <script>
+    async function analyzeNetworkTraffic() {
+        const projectId = document.getElementById("projectId").value;
+
+        if (!projectId) {
+            alert("GCP 프로젝트 ID를 입력하세요!");
+            return;
+        }
+
+        try {
+            const response = await fetch(`http://localhost:8080/api/gcp/network/analyze?projectId=${encodeURIComponent(projectId)}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+
+            const data = await response.text();
+            if (response.ok) {
+                document.getElementById("result").innerText = `✅ 성공: ${data}`;
+            } else {
+                document.getElementById("result").innerText = `❌ 실패: ${data}`;
+            }
+        } catch (error) {
+            console.error("Error:", error);
+            document.getElementById("result").innerText = "❌ 요청 실패! 서버 로그를 확인하세요.";
+        }
+    }
+  </script>
+</head>
+<body>
+<h2>GCP 네트워크 트래픽 분석</h2>
+
+<label for="projectId">GCP 프로젝트 ID:</label>
+<input type="text" id="projectId" placeholder="예: my-gcp-project"><br><br>
+
+<button onclick="analyzeNetworkTraffic()">네트워크 트래픽 분석 실행</button>
+
+<h3>결과:</h3>
+<pre id="result"></pre>
+
+</body>
+</html>

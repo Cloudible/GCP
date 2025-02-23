@@ -1,0 +1,56 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.3'
+	id 'io.spring.dependency-management' version '1.1.7'
+}
+
+group = 'com.gcp'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(21)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+dependencies {
+	implementation platform('com.google.cloud:libraries-bom:26.26.0') // GCP API 버전 자동 관리
+	implementation 'com.google.cloud:google-cloud-storage' // Google Cloud Storage
+	implementation 'com.google.cloud:google-cloud-compute' // Compute Engine API
+	implementation 'com.google.cloud:google-cloud-billing' // GCP Billing API
+	implementation 'com.google.cloud:google-cloud-monitoring' // Cloud Monitoring API
+	implementation 'com.google.auth:google-auth-library-oauth2-http' // GCP 인증 라이브러리
+	implementation 'org.springframework.boot:spring-boot-starter-web' // Spring Boot 웹 서버
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA 사용 시
+	implementation 'org.springframework.boot:spring-boot-starter-validation' // DTO 검증
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+	implementation 'com.mysql:mysql-connector-j:9.1.0'
+	implementation 'com.google.protobuf:protobuf-java:4.29.3'
+
+	implementation 'net.dv8tion:JDA:5.3.0'
+
+	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+
+	implementation 'com.google.cloud:google-cloud-logging:3.21.3'
+
+
+	implementation 'com.google.code.gson:gson' // JSON 처리
+	implementation 'io.fabric8:kubernetes-client:7.1.0'
+
+	implementation 'org.slf4j:slf4j-api:2.0.16'
+
+	implementation 'org.json:json:20240303'
+
+	// Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}

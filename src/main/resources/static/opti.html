@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GCP 비용 최적화</title>
+  <style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        text-align: center;
+    }
+    input {
+        width: 80%;
+        padding: 8px;
+        margin: 5px;
+    }
+    button {
+        padding: 10px 20px;
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    #status {
+        margin-top: 20px;
+        font-weight: bold;
+        color: #FF5733;
+    }
+    #result {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ddd;
+        display: none;
+        background-color: #f9f9f9;
+    }
+    #vmList {
+        list-style: none;
+        padding: 0;
+    }
+    .vm-item {
+        background: #eaf7ff;
+        padding: 8px;
+        margin: 5px 0;
+        border-radius: 5px;
+    }
+  </style>
+  <script>
+    async function optimizeCosts() {
+        const userId = document.getElementById("userId").value;
+        const accessToken = document.getElementById("accessToken").value;
+        const statusDiv = document.getElementById("status");
+        const resultDiv = document.getElementById("result");
+        const vmList = document.getElementById("vmList");
+
+        if (!userId) {
+            alert("사용자 ID를 입력하세요!");
+            return;
+        }
+        if (!accessToken) {
+            alert("Google Access Token을 입력하세요!");
+            return;
+        }
+
+        // 상태 표시
+        statusDiv.innerHTML = "🔄 최적화 실행 중...";
+        statusDiv.style.color = "#FFA500";
+        resultDiv.style.display = "none";
+        vmList.innerHTML = "";
+
+        try {
+            const response = await fetch(`http://localhost:8080/api/gcp/cost-optimizer/${userId}/optimize`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`  // ✅ OAuth 2.0 토큰 추가
+                }
+            });
+
+            const data = await response.json();
+            statusDiv.innerHTML = response.ok ? "✅ 최적화 완료!" : "❌ 최적화 실패!";
+            statusDiv.style.color = response.ok ? "#28a745" : "#dc3545";
+
+            resultDiv.style.display = "block";
+            document.getElementById("resultMessage").innerText = data.message || "결과 없음";
+
+            // 종료된 VM 목록 표시
+            if (data.stoppedVMs && data.stoppedVMs.length > 0) {
+                data.stoppedVMs.forEach(vm => {
+                    const listItem = document.createElement("li");
+                    listItem.className = "vm-item";
+                    listItem.textContent = `💻 ${vm} (종료됨)`;
+                    vmList.appendChild(listItem);
+                });
+            } else {
+                vmList.innerHTML = "<li class='vm-item'>🚀 모든 VM이 정상적으로 사용 중입니다.</li>";
+            }
+
+        } catch (error) {
+            console.error("Error:", error);
+            statusDiv.innerHTML = "❌ 최적화 요청 실패! 서버 로그를 확인하세요.";
+            statusDiv.style.color = "#dc3545";
+        }
+    }
+
+    // (선택) 자동으로 OAuth 2.0 Access Token 가져오는 기능 추가
+    async function getAccessToken() {
+        try {
+            const response = await fetch("https://accounts.google.com/o/oauth2/token"); // 실제 API로 변경 필요
+            const data = await response.json();
+            document.getElementById("accessToken").value = data.access_token || "토큰 요청 실패!";
+        } catch (error) {
+            alert("Access Token을 가져오지 못했습니다.");
+        }
+    }
+  </script>
+</head>
+<body>
+
+<h2>GCP 비용 최적화 실행</h2>
+
+<label for="userId">👤 사용자 ID:</label>
+<input type="text" id="userId" placeholder="user@example.com"><br><br>
+
+<label for="accessToken">🔑 Google Access Token:</label>
+<input type="text" id="accessToken" placeholder="OAuth 2.0 Access Token">
+<button onclick="getAccessToken()">자동 가져오기</button><br><br>
+
+<button onclick="optimizeCosts()">🚀 최적화 실행</button>
+
+<div id="status"></div>
+
+<div id="result">
+  <h3>📊 최적화 결과</h3>
+  <p id="resultMessage"></p>
+  <ul id="vmList"></ul>
+</div>
+
+</body>
+</html>
