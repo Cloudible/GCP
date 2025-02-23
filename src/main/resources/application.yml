@@ -4,3 +4,7 @@ spring:
     username: root
     password: keypass
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+bot:
+  token: ${DISCORD_BOT_TOKEN}
