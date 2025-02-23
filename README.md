@@ -1,5 +1,5 @@
-# GCP-Assistant 🚀
-GCP-Assistant는 **Google Cloud Platform (GCP) 관리 기능을 지원하는 디스코드 봇**입니다.  
+# GCP-Discord-Bot
+GCP-Discord-Bot은 **Google Cloud Platform (GCP) 관리 기능을 지원하는 디스코드 봇**입니다.  
 디스코드 서버에서 간편한 명령어를 통해 GCP VM을 관리하고, 비용 예측 및 로그 확인이 가능합니다.  
 
 ---
