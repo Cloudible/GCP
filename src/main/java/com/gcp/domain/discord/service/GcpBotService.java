@@ -16,12 +16,10 @@ import java.io.IOException;
 @Service
 public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
-    @Value("${bot.token}")
-    private String TOKEN;
 
-    public GcpBotService(GcpService gcpService) throws LoginException {
+    public GcpBotService(GcpService gcpService, @Value("${bot.token}") String token) throws LoginException {
         this.gcpService = gcpService;
-        JDA jda = JDABuilder.createDefault(TOKEN,
+        JDA jda = JDABuilder.createDefault(token,
                         GatewayIntent.GUILD_MESSAGES,
                         GatewayIntent.MESSAGE_CONTENT,
                         GatewayIntent.GUILD_VOICE_STATES)

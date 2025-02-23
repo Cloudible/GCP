@@ -19,7 +19,7 @@ import java.util.Collections;
 @Slf4j
 public class GcpService {
 
-    private final RestTemplate restTemplate;
+    private final RestTemplate restTemplate = new RestTemplate();
     private final GcpAuthUtil gcpAuthUtil;
     private static final String ZONE = "us-central1-c";
     private static final String PROJECT_ID = "semiotic-sylph-450506-u5";
