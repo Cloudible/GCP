@@ -72,6 +72,9 @@ public class GcpBotService extends ListenerAdapter {
                     gcpService.enableVmNotifications();
                     break;
 
+                case "list":
+                    event.getChannel().sendMessage(gcpService.getVmList().toString()).queue();
+                    break;
                 default:
                     event.getChannel().sendMessage("❌ 지원하지 않는 명령어입니다.").queue();
             }

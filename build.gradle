@@ -19,9 +19,10 @@ repositories {
 dependencies {
 	implementation platform('com.google.cloud:libraries-bom:26.26.0') // GCP API 버전 자동 관리
 	implementation 'com.google.cloud:google-cloud-storage' // Google Cloud Storage
-	implementation 'com.google.cloud:google-cloud-compute' // Compute Engine API
+	implementation 'com.google.cloud:google-cloud-compute:1.14.0' // Compute Engine API
 	implementation 'com.google.cloud:google-cloud-billing' // GCP Billing API
 	implementation 'com.google.cloud:google-cloud-monitoring' // Cloud Monitoring API
+	implementation 'com.google.api:gax-httpjson:0.107.0'
 	implementation 'com.google.auth:google-auth-library-oauth2-http' // GCP 인증 라이브러리
 	implementation 'org.springframework.boot:spring-boot-starter-web' // Spring Boot 웹 서버
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa' // JPA 사용 시
