@@ -61,6 +61,7 @@
   description: "긴급하며 우선적으로 해결해야 하는 작업입니다."
   color: "A03C3C"
 
+
 # 진행 상태 - 색상: F6E05E
 - name: "status: in progress"
   description: "작업이 현재 진행 중입니다."
