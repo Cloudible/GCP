@@ -3,18 +3,17 @@ name: Sync Labels
 on:
   push:
     paths:
-      - ".github/labels.yml"  # 이 파일이 변경될 때만
+      - ".github/labels.yml"
 
 jobs:
-  sync:
+  sync-labels:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Sync labels
-        uses: EndBug/label-sync@v2
+      - name: Sync labels using PAT
+        uses: mheap/github-labeler@v1
         with:
-          config-file: .github/labels.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          repo-token: ${{ secrets.PAT_TOKEN }}
+          config: .github/labels.yml
