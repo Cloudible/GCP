@@ -94,24 +94,24 @@ labels:
 
   - name: "type: chore"
     description: "빌드, 설정, 패키지 관리 등 코드 변경 없이 필요한 작업입니다."
-    color: "C084FC"
+    color: C084FC
 
   - name: "type: test"
     description: "테스트 코드 추가, 수정과 관련된 작업입니다."
-    color: "C084FC"
+    color: C084FC
 
   - name: "type: docs"
     description: "문서 작성 또는 README 등 비즈니스 로직과 무관한 문서 작업입니다."
-    color: "C084FC"
+    color: C084FC
 
   - name: "type: refactor"
     description: "기능 변화 없이 코드 구조나 품질을 개선하는 작업입니다."
-    color: "C084FC"
+    color: C084FC
 
   - name: "type: feature"
     description: "새로운 기능을 추가하거나 구현하는 작업입니다."
-    color: "C084FC"
+    color: C084FC
 
   - name: "type: bug"
     description: "버그를 수정하는 작업입니다."
-    color: "C084FC"
+    color: C084FC
