@@ -1,19 +1,21 @@
-name: Sync Labels
+name: Sync labels
 
 on:
   push:
     paths:
       - ".github/labels.yml"
+  workflow_dispatch:
 
 jobs:
   sync-labels:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Sync labels using PAT
-        uses: mheap/github-labeler@v1
+      - name: Sync labels
+        uses: EndBug/label-sync@v2
         with:
-          repo-token: ${{ secrets.PAT_TOKEN }}
-          config: .github/labels.yml
+          config-file: .github/labels.yml
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
