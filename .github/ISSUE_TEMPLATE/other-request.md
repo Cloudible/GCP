@@ -3,7 +3,7 @@ name: Other request
 about: For non-feature/code tasks like documentation, configuration, refactoring,
   infra, etc.
 title: "[refactor]"
-labels: 'type: refactor'
+labels: ''
 assignees: ''
 
 ---
