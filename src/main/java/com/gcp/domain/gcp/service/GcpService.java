@@ -31,10 +31,9 @@ public class GcpService {
             );
 
             String accessToken = gcpAuthUtil.getAccessToken();
-            log.info("액세스 토큰: {}", accessToken);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + accessToken);
+            headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<String> entity = new HttpEntity<>(null, headers); // payload 없이 헤더만
@@ -56,7 +55,7 @@ public class GcpService {
 
             String accessToken = gcpAuthUtil.getAccessToken();
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + accessToken);
+            headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<String> entity = new HttpEntity<>(null, headers);
@@ -69,14 +68,96 @@ public class GcpService {
         }
     }
 
-    public String getVmLogs() {
+    public String getInstanceId(String vmName, String zone) {
         try {
-            String url = String.format("https://logging.googleapis.com/v2/entries:list?resourceNames=projects/%s", PROJECT_ID);
-            String response = restTemplate.getForObject(url, String.class);
-            return "📜 최근 GCP 로그:\n" + response;
+            String token = gcpAuthUtil.getAccessToken();
+            String url = String.format(
+                    "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s",
+                    PROJECT_ID, zone, vmName
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(token);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+
+            RestTemplate restTemplate = new RestTemplate();
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode json = mapper.readTree(response.getBody());
+            return json.path("id").asText();
+
+        } catch (Exception e) {
+            log.error("❌ instance_id 조회 실패", e);
+            return null;
+        }
+    }
+
+
+    public List<String> getVmLogs(String vmName) {
+        try {
+            String accessToken = gcpAuthUtil.getAccessToken();
+            RestTemplate restTemplate = new RestTemplate();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            String vmId = getInstanceId(vmName, ZONE);
+
+            String filter = String.format(
+                    "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"%s\" AND severity>=ERROR",
+                    vmId
+            );
+            
+            Map<String, Object> body = Map.of(
+                    "resourceNames", List.of("projects/sincere-elixir-464606-j1"),
+                    "pageSize", 50,
+                    "orderBy", "timestamp desc",
+                    "filter", filter
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            String url = "https://logging.googleapis.com/v2/entries:list";
+
+            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode root = mapper.readTree(response.getBody());
+
+            List<String> sbList = new ArrayList<>();
+            StringBuilder sb = new StringBuilder();
+            for (JsonNode entry : root.get("entries")) {
+                String time = entry.path("timestamp").asText();
+                String level = entry.path("severity").asText();
+                String message = entry.path("jsonPayload").path("message").asText();
+
+                String combinedMessage = String.format("[%s] [%s] %s%n", time, level, message);
+
+
+                // 디스코드에서 한 번에 출력 가능한 문자 수가 2000이라 기존 문자열 길이와 먼저 더해보고 2000보다 크면 기존 문자열은 반환.
+                // 새 메시지는 새로 할당된 sb에 추가.
+                if (sb.length() + combinedMessage.length() > 2000){
+                    sbList.add(sb.toString());
+                    sb = new StringBuilder();
+                }
+
+                sb.append(combinedMessage);
+
+            }
+
+            // 반복 이후에 sb에 메시지가 남아있을 수도 있으니 해당 메시지도 추가.
+            if (!sb.isEmpty()) {
+                sbList.add(sb.toString());
+            }
+            return sbList;
+
         } catch (Exception e) {
             log.error("❌ 로그 조회 오류", e);
-            return "❌ 로그 조회 실패!";
+            List<String> errorMessage = new ArrayList<>();
+            errorMessage.add("❌ 로그 조회 실패!");
+
+            return errorMessage;
         }
     }
 
