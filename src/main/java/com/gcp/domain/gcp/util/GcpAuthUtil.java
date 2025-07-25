@@ -17,7 +17,7 @@ public class GcpAuthUtil {
     private final GcpProjectRepository gcpProjectRepository;
 
     public String getAccessToken() throws IOException {
-        String base64EncodedKey = gcpProjectRepository.findByUserId("pjygcp2")
+        String base64EncodedKey = gcpProjectRepository.findByUserId("pjygcp6")
                 .orElseThrow(() -> new RuntimeException("GCP 프로젝트가 등록되지 않았습니다."))
                 .getCredentialsJson();
 
