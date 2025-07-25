@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.security.auth.login.LoginException;
-import java.io.IOException;
+import java.util.List;
 
 @Service
 public class GcpBotService extends ListenerAdapter {
@@ -60,7 +60,18 @@ public class GcpBotService extends ListenerAdapter {
                     break;
 
                 case "logs":
-                    event.getChannel().sendMessage(gcpService.getVmLogs()).queue();
+                    if (parts.length < 3) {
+                        event.getChannel().sendMessage("❌ 사용법: /gcp logs {vm_name}").queue();
+                        return;
+                    }
+                    String logVm = parts[2];
+                    List<String> receivedMessages = gcpService.getVmLogs(logVm);
+                    receivedMessages.forEach(
+                            receiveMessage -> {
+                                event.getChannel().sendMessage(receiveMessage).queue();
+                            }
+                    );
+
                     break;
 
                 case "cost":
