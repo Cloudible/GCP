@@ -81,7 +81,6 @@ public class GcpService {
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
-            RestTemplate restTemplate = new RestTemplate();
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
 
             ObjectMapper mapper = new ObjectMapper();
@@ -104,6 +103,9 @@ public class GcpService {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             String vmId = getInstanceId(vmName, ZONE);
+            if (vmId == null){
+                return List.of("❌ VM 인스턴스를 찾을 수 없습니다!");
+            }
 
             String filter = String.format(
                     "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"%s\" AND severity>=ERROR",
