@@ -86,6 +86,29 @@ public class GcpBotService extends ListenerAdapter {
                 case "list":
                     event.getChannel().sendMessage(gcpService.getVmList().toString()).queue();
                     break;
+                case "create":
+                    if (parts.length < 7) {
+                        event.getChannel().sendMessage("❌ 사용법: /gcp create {vm_name} {machine_type} {os_image} {boot_disk_gb} {allowHttp} {allowHttps}").queue();
+                        return;
+                    }
+
+                    String vmName = parts[2];
+                    String machineType = parts[3];
+                    String osImage = parts[4];
+                    int bootDiskGb;
+                    try {
+                        bootDiskGb = Integer.parseInt(parts[5]);
+                    } catch (NumberFormatException e) {
+                        event.getChannel().sendMessage("❌ 디스크 크기는 숫자(GB 단위)여야 합니다.").queue();
+                        return;
+                    }
+                    boolean allowHttp = Boolean.parseBoolean(parts[6]);
+                    boolean allowHttps = Boolean.parseBoolean(parts[7]);
+
+                    String result = gcpService.createVM(vmName, machineType, osImage, bootDiskGb, allowHttp, allowHttps);
+                    event.getChannel().sendMessage(result).queue();
+                    break;
+
                 default:
                     event.getChannel().sendMessage("❌ 지원하지 않는 명령어입니다.").queue();
             }
