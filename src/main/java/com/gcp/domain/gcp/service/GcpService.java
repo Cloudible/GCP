@@ -241,42 +241,42 @@ public class GcpService {
             if (allowHttp) tags.add("http-server");
             if (allowHttps) tags.add("https-server");
 
-            String tagJson = tags.stream().map(t -> "\"" + t + "\"").reduce((a, b) -> a + "," + b).orElse("");
+            Map<String, Object> bodyMap = new LinkedHashMap<>();
+            bodyMap.put("name", vmName);
+            bodyMap.put("machineType", String.format("zones/%s/machineTypes/%s", ZONE, machineType));
+            if (!tags.isEmpty()) {
+                bodyMap.put("tags", Map.of("items", tags));
+            }
+
+            bodyMap.put("disks", List.of(
+                    Map.of(
+                            "boot", true,
+                            "autoDelete", true,
+                            "initializeParams", Map.of(
+                                    "diskSizeGb", bootDiskGb,
+                                    "sourceImage", image
+                            )
+                    )
+            ));
+
+            bodyMap.put("networkInterfaces", List.of(
+                    Map.of(
+                            "network", "global/networks/default",
+                            "accessConfigs", List.of(
+                                    Map.of(
+                                            "name", "External NAT",
+                                            "type", "ONE_TO_ONE_NAT"
+                                    )
+                            )
+                    )
+            ));
+
+            ObjectMapper mapper = new ObjectMapper();
+            String body = mapper.writeValueAsString(bodyMap);
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + accessToken);
+            headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
-
-            String body = """
-        {
-          "name": "%s",
-          "machineType": "zones/%s/machineTypes/%s",
-          "tags": {
-            "items": [%s]
-          },
-          "disks": [
-            {
-              "boot": true,
-              "autoDelete": true,
-              "initializeParams": {
-                "diskSizeGb": %d,
-                "sourceImage": "%s"
-              }
-            }
-          ],
-          "networkInterfaces": [
-            {
-              "network": "global/networks/default",
-              "accessConfigs": [
-                {
-                  "name": "External NAT",
-                  "type": "ONE_TO_ONE_NAT"
-                }
-              ]
-            }
-          ]
-        }
-        """.formatted(vmName, ZONE, machineType, tagJson, bootDiskGb, image);
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             restTemplate.postForEntity(url, entity, String.class);
