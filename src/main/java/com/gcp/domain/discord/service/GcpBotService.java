@@ -87,7 +87,7 @@ public class GcpBotService extends ListenerAdapter {
                     event.getChannel().sendMessage(gcpService.getVmList().toString()).queue();
                     break;
                 case "create":
-                    if (parts.length < 7) {
+                    if (parts.length < 8) {
                         event.getChannel().sendMessage("❌ 사용법: /gcp create {vm_name} {machine_type} {os_image} {boot_disk_gb} {allowHttp} {allowHttps}").queue();
                         return;
                     }
@@ -98,6 +98,10 @@ public class GcpBotService extends ListenerAdapter {
                     int bootDiskGb;
                     try {
                         bootDiskGb = Integer.parseInt(parts[5]);
+                        if (bootDiskGb <= 9) {
+                            event.getChannel().sendMessage("❌ 디스크 크기는 10 이상이 되어야 합니다.").queue();
+                            return;
+                        }
                     } catch (NumberFormatException e) {
                         event.getChannel().sendMessage("❌ 디스크 크기는 숫자(GB 단위)여야 합니다.").queue();
                         return;
