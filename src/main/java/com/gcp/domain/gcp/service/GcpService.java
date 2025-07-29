@@ -224,4 +224,69 @@ public class GcpService {
     public void enableVmNotifications() {
         log.info("📢 GCP VM 상태 변경 감지 알림 활성화!");
     }
+
+    public String createVM(String vmName, String machineType, String osImage, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
+        try {
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances", PROJECT_ID, ZONE);
+            String accessToken = gcpAuthUtil.getAccessToken();
+
+            Map<String, String> imageMap = Map.of(
+                    "debian-11", "projects/debian-cloud/global/images/family/debian-11",
+                    "ubuntu-2204", "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts",
+                    "centos-7", "projects/centos-cloud/global/images/family/centos-7"
+            );
+            String image = imageMap.getOrDefault(osImage, imageMap.get("debian-11"));
+
+            List<String> tags = new ArrayList<>();
+            if (allowHttp) tags.add("http-server");
+            if (allowHttps) tags.add("https-server");
+
+            Map<String, Object> bodyMap = new LinkedHashMap<>();
+            bodyMap.put("name", vmName);
+            bodyMap.put("machineType", String.format("zones/%s/machineTypes/%s", ZONE, machineType));
+            if (!tags.isEmpty()) {
+                bodyMap.put("tags", Map.of("items", tags));
+            }
+
+            bodyMap.put("disks", List.of(
+                    Map.of(
+                            "boot", true,
+                            "autoDelete", true,
+                            "initializeParams", Map.of(
+                                    "diskSizeGb", bootDiskGb,
+                                    "sourceImage", image
+                            )
+                    )
+            ));
+
+            bodyMap.put("networkInterfaces", List.of(
+                    Map.of(
+                            "network", "global/networks/default",
+                            "accessConfigs", List.of(
+                                    Map.of(
+                                            "name", "External NAT",
+                                            "type", "ONE_TO_ONE_NAT"
+                                    )
+                            )
+                    )
+            ));
+
+            ObjectMapper mapper = new ObjectMapper();
+            String body = mapper.writeValueAsString(bodyMap);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<String> entity = new HttpEntity<>(body, headers);
+            restTemplate.postForEntity(url, entity, String.class);
+
+            return "🆕 `" + vmName + "` VM 인스턴스 생성 중 (OS: %s, 디스크: %dGB, HTTP: %s, HTTPS: %s)".formatted(
+                    osImage, bootDiskGb, allowHttp, allowHttps
+            );
+        } catch (Exception e) {
+            log.error("❌ VM 생성 오류", e);
+            return "❌ `" + vmName + "` VM 생성 실패!";
+        }
+    }
 }
