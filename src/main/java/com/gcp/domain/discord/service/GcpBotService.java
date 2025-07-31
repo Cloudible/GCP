@@ -43,11 +43,17 @@ public class GcpBotService extends ListenerAdapter {
                         event.getChannel().sendMessage("❌ 사용법: /gcp init").queue();
                         return;
                     }
-                    discordUserService.insertDiscordUser(userId, userName, guildId, guildName);
-                    event.getChannel().sendMessage(userName + "님 환영합니다.").queue();
+                    String responseMsg;
+                    if(discordUserService.insertDiscordUser(userId, userName, guildId, guildName)){
+                        responseMsg = userName + "님 환영합니다.";
+                    } else{
+                        responseMsg = userName + "님은 " + guildName + "에 이미 등록되어 있습니다.";
+                    }
+                    event.getChannel().sendMessage(responseMsg).queue();
                     break;
                 }
 
+                // OAUTH 방식으로 인증할 예정.
                 case "register": {
 
                 }
