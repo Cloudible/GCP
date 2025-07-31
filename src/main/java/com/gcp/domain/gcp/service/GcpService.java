@@ -23,14 +23,17 @@ public class GcpService {
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
 
-    public String startVM(String vmName) {
+
+
+
+    public String startVM(String userId, String guildId, String vmName) {
         try {
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s/start",
                     PROJECT_ID, ZONE, vmName
             );
 
-            String accessToken = gcpAuthUtil.getAccessToken();
+            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -46,14 +49,14 @@ public class GcpService {
         }
     }
 
-    public String stopVM(String vmName) {
+    public String stopVM(String userId, String guildId, String vmName) {
         try {
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s/stop",
                     PROJECT_ID, ZONE, vmName
             );
 
-            String accessToken = gcpAuthUtil.getAccessToken();
+            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -68,9 +71,9 @@ public class GcpService {
         }
     }
 
-    public String getInstanceId(String vmName, String zone) {
+    public String getInstanceId(String userId, String guildId, String vmName, String zone) {
         try {
-            String token = gcpAuthUtil.getAccessToken();
+            String token = gcpAuthUtil.getAccessToken(userId, guildId);
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s",
                     PROJECT_ID, zone, vmName
@@ -94,15 +97,15 @@ public class GcpService {
     }
 
 
-    public List<String> getVmLogs(String vmName) {
+    public List<String> getVmLogs(String userId, String guildId, String vmName) {
         try {
-            String accessToken = gcpAuthUtil.getAccessToken();
+            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            String vmId = getInstanceId(vmName, ZONE);
+            String vmId = getInstanceId(userId, guildId, vmName, ZONE);
             if (vmId == null){
                 return List.of("❌ VM 인스턴스를 찾을 수 없습니다!");
             }
@@ -175,11 +178,11 @@ public class GcpService {
     }
 
     @SneakyThrows
-    public List<Map<String, String>> getVmList() {
+    public List<Map<String, String>> getVmList(String userId, String guildId) {
         String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
                 PROJECT_ID, ZONE);
 
-        String accessToken = gcpAuthUtil.getAccessToken();
+        String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
