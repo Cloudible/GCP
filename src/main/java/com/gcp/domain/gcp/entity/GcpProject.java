@@ -1,10 +1,12 @@
 package com.gcp.domain.gcp.entity;
 
+import com.gcp.domain.discord.entity.DiscordUser;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+
 
 @Entity
 @Table(name = "gcp_project")
@@ -16,9 +18,13 @@ public class GcpProject {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    private String userId; // 사용자 ID
-    private String projectId; // GCP 프로젝트 ID
+    private String projectId;
+    private String zone;
 
     @Column(columnDefinition = "TEXT")
     private String credentialsJson;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private DiscordUser discordUser;
 }
