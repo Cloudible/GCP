@@ -2,52 +2,63 @@ package com.gcp.domain.discord.service;
 
 import com.gcp.domain.gcp.service.GcpService;
 import lombok.RequiredArgsConstructor;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.requests.GatewayIntent;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.security.auth.login.LoginException;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
+    private final DiscordUserService discordUserService;
 
-    public GcpBotService(GcpService gcpService, @Value("${bot.token}") String token) throws LoginException {
-        this.gcpService = gcpService;
-        JDA jda = JDABuilder.createDefault(token,
-                        GatewayIntent.GUILD_MESSAGES,
-                        GatewayIntent.MESSAGE_CONTENT,
-                        GatewayIntent.GUILD_VOICE_STATES)
-                .addEventListeners(this)
-                .enableIntents(GatewayIntent.MESSAGE_CONTENT)
-                .build();
-    }
 
     @Override
     public void onMessageReceived(MessageReceivedEvent event) {
         String message = event.getMessage().getContentRaw();
         String[] parts = message.split(" ");
 
+        User author = event.getAuthor();
+        Guild guild = event.getGuild();
+
+        String userName = author.getGlobalName();
+        String userId = author.getId(); // 고유 사용자 ID;
+        String guildId = guild.getId();
+        String guildName = guild.getName();
+
         if (message.startsWith("/gcp")) {
-            if (parts.length < 2) {
+            if (parts.length < 1) {
                 event.getChannel().sendMessage("❌ 사용법: /gcp [명령어] [옵션]").queue();
                 return;
             }
 
             String command = parts[1];
             switch (command) {
+                case "init": {
+                    if(parts.length > 2){
+                        event.getChannel().sendMessage("❌ 사용법: /gcp init").queue();
+                        return;
+                    }
+                    discordUserService.insertDiscordUser(userId, userName, guildId, guildName);
+                    event.getChannel().sendMessage(userName + "님 환영합니다.").queue();
+                    break;
+                }
+
+                case "register": {
+
+                }
+
                 case "start":
                     if (parts.length < 3) {
                         event.getChannel().sendMessage("❌ 사용법: /gcp start {vm_name}").queue();
                         return;
                     }
                     String startVm = parts[2];
-                    event.getChannel().sendMessage(gcpService.startVM(startVm)).queue();
+                    event.getChannel().sendMessage(gcpService.startVM(userId, guildId, startVm)).queue();
                     break;
 
                 case "stop":
@@ -56,7 +67,7 @@ public class GcpBotService extends ListenerAdapter {
                         return;
                     }
                     String stopVm = parts[2];
-                    event.getChannel().sendMessage(gcpService.stopVM(stopVm)).queue();
+                    event.getChannel().sendMessage(gcpService.stopVM(userId, guildId, stopVm)).queue();
                     break;
 
                 case "logs":
@@ -65,7 +76,7 @@ public class GcpBotService extends ListenerAdapter {
                         return;
                     }
                     String logVm = parts[2];
-                    List<String> receivedMessages = gcpService.getVmLogs(logVm);
+                    List<String> receivedMessages = gcpService.getVmLogs(userId, guildId, logVm);
                     receivedMessages.forEach(
                             receiveMessage -> {
                                 event.getChannel().sendMessage(receiveMessage).queue();
@@ -84,7 +95,7 @@ public class GcpBotService extends ListenerAdapter {
                     break;
 
                 case "list":
-                    event.getChannel().sendMessage(gcpService.getVmList().toString()).queue();
+                    event.getChannel().sendMessage(gcpService.getVmList(userId, guildId).toString()).queue();
                     break;
                 default:
                     event.getChannel().sendMessage("❌ 지원하지 않는 명령어입니다.").queue();
