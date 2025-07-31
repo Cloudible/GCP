@@ -6,5 +6,10 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 
+  jpa:
+    hibernate:
+      ddl-auto: update # 또는 validate, none 등
+
+
 bot:
   token: ${DISCORD_BOT_TOKEN}
