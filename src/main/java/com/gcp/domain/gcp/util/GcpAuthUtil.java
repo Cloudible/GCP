@@ -1,9 +1,11 @@
 package com.gcp.domain.gcp.util;
 
+import com.gcp.domain.discord.entity.DiscordUser;
+import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
 import com.google.auth.oauth2.GoogleCredentials;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ClassPathResource;
+
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayInputStream;
@@ -15,9 +17,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class GcpAuthUtil {
     private final GcpProjectRepository gcpProjectRepository;
+    private final DiscordUserRepository discordUserRepository;
 
-    public String getAccessToken() throws IOException {
-        String base64EncodedKey = gcpProjectRepository.findByUserId("pjygcp6")
+    public String getAccessToken(String userId, String channelId) throws IOException {
+
+        DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, channelId).orElseThrow();
+
+        String base64EncodedKey = gcpProjectRepository.findByDiscordUser(discordUser)
                 .orElseThrow(() -> new RuntimeException("GCP 프로젝트가 등록되지 않았습니다."))
                 .getCredentialsJson();
 
