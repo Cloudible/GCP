@@ -34,6 +34,10 @@ spring:
     hibernate:
       ddl-auto: update # 또는 validate, none 등
 
+security:
+  crypto:
+    aes-key: "4328175493264413"
+    aes-iv: "abcdefghijklmnop"
 
 bot:
   token: ${DISCORD_BOT_TOKEN}
