@@ -25,6 +25,9 @@ public class DiscordUser {
     private String guildId;
     private String guildName;
 
+    private String googleRefreshToken;
+    private String googleAccessToken;
+
     @OneToMany(mappedBy = "discordUser",cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<GcpProject> gcpProjects = new ArrayList<>();
 
@@ -33,6 +36,11 @@ public class DiscordUser {
         this.userName = userName;
         this.guildId = guildId;
         this.guildName = guildName;
+    }
+
+    public void updateTokens(String googleAccessToken, String googleRefreshToken){
+        this.googleAccessToken = googleAccessToken;
+        this.googleRefreshToken = googleRefreshToken;
     }
 
     public void addProject(GcpProject project) {
