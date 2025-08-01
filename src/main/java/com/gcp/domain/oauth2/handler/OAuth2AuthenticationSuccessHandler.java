@@ -17,11 +17,16 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -41,6 +46,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
     private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Override
+    @Transactional
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException {
 
@@ -77,15 +83,17 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
 
             String googleAccessToken = client.getAccessToken().getTokenValue();
             String googleRefreshToken = client.getRefreshToken().getTokenValue();
+            Instant accessTokenExpiresAt = client.getAccessToken().getExpiresAt();;
+
 
             if(googleAccessToken != null) {
                 discordUser.updateAccessToken(googleAccessToken);
+                discordUser.updateAccessTokenExpiration(LocalDateTime.ofInstant(Objects.requireNonNull(accessTokenExpiresAt), ZoneId.of("Asia/Seoul")));
             }
 
             if (googleRefreshToken != null){
                 discordUser.updateRefreshToken(googleRefreshToken);
             }
-
 
 
             log.info("✅ OAuth 로그인 성공! 쿠키 설정 완료! 리디렉션 실행: {}", targetUrl);
