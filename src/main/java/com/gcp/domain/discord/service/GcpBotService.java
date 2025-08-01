@@ -7,8 +7,12 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -26,7 +30,8 @@ public class GcpBotService extends ListenerAdapter {
         Guild guild = event.getGuild();
 
         String userName = author.getGlobalName();
-        String userId = author.getId(); // 고유 사용자 ID;
+        String userId = author.getId();
+
         String guildId = guild.getId();
         String guildName = guild.getName();
 
@@ -53,9 +58,23 @@ public class GcpBotService extends ListenerAdapter {
                     break;
                 }
 
+
                 case "register": {
-                    String redirectUri = String.format("http://localhost:8080/oauth2/authorization/google?access_type=offline&mode=login" +
-                            "&redirect_uri=https://discord.com/channels/%s/&userId=%s&guildId=%s", guildId, userId, guildId);
+                    String userProfile = Optional.ofNullable(author.getAvatarUrl())
+                            .orElse(author.getDefaultAvatarUrl());
+
+                    String infoRaw = userName + "|" + guildName + "|" + userProfile;
+                    String encodedInfo = Base64.getUrlEncoder().encodeToString(infoRaw.getBytes(StandardCharsets.UTF_8));
+
+                    String redirectUri = UriComponentsBuilder
+                            .fromHttpUrl("http://localhost:8080/oauth2/authorization/google")
+                            .queryParam("access_type", "offline")
+                            .queryParam("mode", "login")
+                            .queryParam("redirect_uri", "http://gcpassist.com?info=" + encodedInfo)
+                            .queryParam("userId", userId)
+                            .queryParam("guildId", guildId)
+                            .build()
+                            .toUriString();
                     event.getChannel().sendMessage(
                             "👇 아래 링크를 클릭해서 Google 계정을 연결해주세요:\n" + redirectUri).queue();
                     break;
