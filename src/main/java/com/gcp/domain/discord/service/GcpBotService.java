@@ -53,10 +53,9 @@ public class GcpBotService extends ListenerAdapter {
                     break;
                 }
 
-
                 case "register": {
-                    String redirectUri = "http://localhost:8080/oauth2/authorization/google?access_type=offline&mode=login&redirect_uri=http://gcpassist.com/&userId=" + userId
-                            + "&guildId=" + guildId;
+                    String redirectUri = String.format("http://localhost:8080/oauth2/authorization/google?access_type=offline&mode=login" +
+                            "&redirect_uri=https://discord.com/channels/%s/&userId=%s&guildId=%s", guildId, userId, guildId);
                     event.getChannel().sendMessage(
                             "👇 아래 링크를 클릭해서 Google 계정을 연결해주세요:\n" + redirectUri).queue();
                     break;
