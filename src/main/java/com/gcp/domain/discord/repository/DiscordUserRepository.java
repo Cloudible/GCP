@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Repository
@@ -21,6 +22,11 @@ public interface DiscordUserRepository extends JpaRepository<DiscordUser, Long> 
     @Query("SELECT u.googleAccessToken FROM DiscordUser u WHERE u.userId = :userId AND u.guildId = :guildId")
     Optional<String> findAccessTokenByUserIdAndGuildId(@Param("userId") String userId,
                                                        @Param("guildId") String guildId);
+
+
+    @Query("SELECT u.accessTokenExpiration FROM DiscordUser u WHERE u.userId = :userId AND u.guildId = :guildId")
+    Optional<LocalDateTime> findAccessTokenExpByUserIdAndGuildId(@Param("userId") String userId,
+                                                                 @Param("guildId") String guildId);
 
 
 }
