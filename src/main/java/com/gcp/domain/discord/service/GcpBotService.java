@@ -1,5 +1,6 @@
 package com.gcp.domain.discord.service;
 
+import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.service.GcpService;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Guild;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +21,7 @@ import java.util.Optional;
 public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
     private final DiscordUserService discordUserService;
+    private final DiscordUserRepository discordUserRepository;
 
 
     @Override
@@ -60,6 +63,13 @@ public class GcpBotService extends ListenerAdapter {
 
 
                 case "register": {
+
+                    LocalDateTime tokenExp = discordUserRepository.findAccessTokenExpByUserIdAndGuildId(userId, guildId).orElseThrow();
+                    if (tokenExp.isAfter(LocalDateTime.now())) {
+                        event.getChannel().sendMessage("✅ 이미 인증된 계정입니다.").queue();
+                        return;
+                    }
+
                     String userProfile = Optional.ofNullable(author.getAvatarUrl())
                             .orElse(author.getDefaultAvatarUrl());
 
