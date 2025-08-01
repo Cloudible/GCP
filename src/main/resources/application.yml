@@ -34,11 +34,6 @@ spring:
     hibernate:
       ddl-auto: update # 또는 validate, none 등
 
-jwt:
-  issuer: am030818@naver.com
-  secret: "jfsgkhdsjkweoiruwqejkrfbhnsadkjlfghbwerqewrsdfgdsfagbdf"
-  access-expiration: 3600
-  refresh-expiration: 8640
 
 bot:
   token: ${DISCORD_BOT_TOKEN}

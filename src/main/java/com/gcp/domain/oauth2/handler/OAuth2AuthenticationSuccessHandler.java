@@ -6,8 +6,6 @@ import com.gcp.domain.oauth2.HttpCookieOAuth2AuthorizationRequestRepository;
 import com.gcp.domain.oauth2.service.OAuth2UserPrincipal;
 import com.gcp.domain.oauth2.user.OAuth2UserUnlinkManager;
 import com.gcp.domain.oauth2.util.CookieUtils;
-import com.gcp.global.jwt.JwtUtil;
-import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
