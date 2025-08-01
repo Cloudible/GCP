@@ -2,6 +2,7 @@ package com.gcp.domain.gcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.util.GcpAuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -19,6 +20,7 @@ import java.util.*;
 public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final DiscordUserRepository discordUserRepository;
     private final GcpAuthUtil gcpAuthUtil;
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
@@ -33,7 +35,7 @@ public class GcpService {
                     PROJECT_ID, ZONE, vmName
             );
 
-            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -56,7 +58,7 @@ public class GcpService {
                     PROJECT_ID, ZONE, vmName
             );
 
-            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -73,14 +75,15 @@ public class GcpService {
 
     public String getInstanceId(String userId, String guildId, String vmName, String zone) {
         try {
-            String token = gcpAuthUtil.getAccessToken(userId, guildId);
+
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s",
                     PROJECT_ID, zone, vmName
             );
 
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(token);
+            headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Void> request = new HttpEntity<>(headers);
 
@@ -99,7 +102,7 @@ public class GcpService {
 
     public List<String> getVmLogs(String userId, String guildId, String vmName) {
         try {
-            String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             RestTemplate restTemplate = new RestTemplate();
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -182,7 +185,7 @@ public class GcpService {
         String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
                 PROJECT_ID, ZONE);
 
-        String accessToken = gcpAuthUtil.getAccessToken(userId, guildId);
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
         HttpHeaders headers = new HttpHeaders();
         headers.set("Authorization", "Bearer " + accessToken);
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -228,10 +231,10 @@ public class GcpService {
         log.info("📢 GCP VM 상태 변경 감지 알림 활성화!");
     }
 
-    public String createVM(String vmName, String machineType, String osImage, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
+    public String createVM(String userId, String guildId, String vmName, String machineType, String osImage, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
         try {
             String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances", PROJECT_ID, ZONE);
-            String accessToken = gcpAuthUtil.getAccessToken();
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
 
             Map<String, String> imageMap = Map.of(
                     "debian-11", "projects/debian-cloud/global/images/family/debian-11",
