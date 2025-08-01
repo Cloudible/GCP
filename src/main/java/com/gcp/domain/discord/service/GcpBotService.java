@@ -53,8 +53,13 @@ public class GcpBotService extends ListenerAdapter {
                     break;
                 }
 
-                // OAUTH 방식으로 인증할 예정.
+
                 case "register": {
+                    String redirectUri = "http://localhost:8080/oauth2/authorization/google?access_type=offline&mode=login&redirect_uri=http://gcpassist.com/&userId=" + userId
+                            + "&guildId=" + guildId;
+                    event.getChannel().sendMessage(
+                            "👇 아래 링크를 클릭해서 Google 계정을 연결해주세요:\n" + redirectUri).queue();
+                    break;
 
                 }
 
@@ -126,7 +131,7 @@ public class GcpBotService extends ListenerAdapter {
                     boolean allowHttp = Boolean.parseBoolean(parts[6]);
                     boolean allowHttps = Boolean.parseBoolean(parts[7]);
 
-                    String result = gcpService.createVM(vmName, machineType, osImage, bootDiskGb, allowHttp, allowHttps);
+                    String result = gcpService.createVM(userId, guildId, vmName, machineType, osImage, bootDiskGb, allowHttp, allowHttps);
                     event.getChannel().sendMessage(result).queue();
                     break;
 
