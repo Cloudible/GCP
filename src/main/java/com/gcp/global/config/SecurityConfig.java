@@ -68,11 +68,10 @@ public class SecurityConfig {
                 )
                 .sessionManagement(sessions -> sessions.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .oauth2Login(configure ->
-                        configure.authorizationEndpoint(config -> config.authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository))
-                                .authorizationEndpoint(authorization -> authorization
-                                        .authorizationRequestResolver(
-                                                new CustomAuthorizationRequestResolver(repo, "/oauth2/authorization")
-                                        ))
+                        configure.authorizationEndpoint(config -> config.authorizationRequestRepository(httpCookieOAuth2AuthorizationRequestRepository)
+                                .authorizationRequestResolver(
+                                        new CustomAuthorizationRequestResolver(repo, "/oauth2/authorization")
+                                ))
                                 .userInfoEndpoint(config -> config.userService(customOAuth2UserService))
                                 .successHandler(oAuth2AuthenticationSuccessHandler)
                                 .failureHandler(oAuth2AuthenticationFailureHandler)

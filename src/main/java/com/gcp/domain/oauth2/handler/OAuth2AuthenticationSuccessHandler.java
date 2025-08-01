@@ -66,13 +66,25 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             String userId = parsed.get("userId");
             String guildId = parsed.get("guildId");
 
-            DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+            if(userId == null || guildId == null){
+                log.error("state 파라미터에 필수 정보가 없습니다: {}", state);
+                throw new IllegalArgumentException("Invalid state parameter");
+            }
+
+            DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId)
+                           .orElseThrow(() -> new IllegalStateException(
+                                    String.format("DiscordUser를 찾을 수 없습니다: userId=%s, guildId=%s", userId, guildId)));
 
             String googleAccessToken = client.getAccessToken().getTokenValue();
             String googleRefreshToken = client.getRefreshToken().getTokenValue();
 
-            discordUser.updateTokens(googleAccessToken, googleRefreshToken);
-            discordUserRepository.save(discordUser);
+            if(googleAccessToken != null) {
+                discordUser.updateAccessToken(googleAccessToken);
+            }
+
+            if (googleRefreshToken != null){
+                discordUser.updateRefreshToken(googleRefreshToken);
+            }
 
 
 

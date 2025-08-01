@@ -6,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.List;
 @Table(name = "discord_user")
 @Getter
 @Setter
+@DynamicUpdate
 @NoArgsConstructor
 @AllArgsConstructor
 public class DiscordUser {
@@ -25,7 +27,10 @@ public class DiscordUser {
     private String guildId;
     private String guildName;
 
+    @Convert(converter = AttributeConverter.class)
     private String googleRefreshToken;
+
+    @Convert(converter = AttributeConverter.class)
     private String googleAccessToken;
 
     @OneToMany(mappedBy = "discordUser",cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -38,8 +43,12 @@ public class DiscordUser {
         this.guildName = guildName;
     }
 
-    public void updateTokens(String googleAccessToken, String googleRefreshToken){
+    public void updateAccessToken(String googleAccessToken){
         this.googleAccessToken = googleAccessToken;
+    }
+
+
+    public void updateRefreshToken(String googleRefreshToken){
         this.googleRefreshToken = googleRefreshToken;
     }
 

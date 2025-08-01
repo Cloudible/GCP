@@ -29,13 +29,21 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
         String targetUrl = CookieUtils.getCookie(request, REDIRECT_URI_PARAM_COOKIE_NAME)
                 .map(Cookie::getValue)
                 .orElse(("/"));
-        System.out.println(targetUrl);
+
         targetUrl = UriComponentsBuilder.fromUriString(targetUrl)
-                .queryParam("error", exception.getLocalizedMessage())
+                .queryParam("error", "로그인 중 오류가 발생했습니다.")
                 .build().encode().toUriString();
+
+        if(!isValidRedirectUri(targetUrl)){
+            targetUrl = "/";
+        }
 
         httpCookieOAuth2AuthorizationRequestRepository.removeAuthorizationRequestCookies(request, response);
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
+    }
+
+    private boolean isValidRedirectUri(String uri) {
+        return uri.startsWith("/") || uri.startsWith("http://gcpassist.com");
     }
 }
