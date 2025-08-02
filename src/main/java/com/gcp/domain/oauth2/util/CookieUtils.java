@@ -26,7 +26,7 @@ public class CookieUtils {
         Cookie cookie = new Cookie(name, value);
         cookie.setMaxAge(maxAge);
         cookie.setPath("/");
-        cookie.setDomain("gcpassist");
+        cookie.setDomain("gcpassist.com");
         cookie.setHttpOnly(true);
         cookie.setSecure(true);
         cookie.setAttribute("SameSite", "None");
