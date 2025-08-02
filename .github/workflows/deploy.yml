@@ -89,7 +89,7 @@ jobs:
             sudo docker run -d \
             --name $IMAGE_NAME \
             --network app-network \
-            -p 8443:8443 \
+            -p 8080:8080 \
             -e MYSQL_HOST=${{ secrets.MYSQL_HOST }} \
             -e MYSQL_DB=${{ secrets.MYSQL_DB }} \
             -e MYSQL_USER=${{ secrets.MYSQL_USER }} \
