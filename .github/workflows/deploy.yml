@@ -1,0 +1,103 @@
+name: CI / CD
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  CI:
+    runs-on: ubuntu-latest
+
+    env:
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      IMAGE_NAME: gcpassistant
+      IMAGE_TAG: ${{ github.sha }}
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'adopt'
+
+      - name: Google Cloud SDK 설정
+        uses: "google-github-actions/auth@v2"
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Docker를 위한 gcloud 인증 설정
+        run: gcloud auth configure-docker --quiet
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build with Gradle(Test 제외)
+        run: ./gradlew build --exclude-task test
+
+      - name: Verify JAR file
+        run: ls -la build/libs/
+
+      - name: Docker 인증 구성
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Docker 이미지 빌드 및 푸시
+        run: |
+          docker build --build-arg SPRING_PROFILE=prod -t us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/docker/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+          docker push us-central1-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/docker/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+  CD:
+    runs-on: ubuntu-latest
+    needs: CI
+
+    env:
+      IMAGE_NAME: gcpassistant
+      IMAGE_TAG: ${{ github.sha }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+
+    steps:
+      - name: 서버에 SSH 접속하여 Docker 실행
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.DEPLOY_SERVER_HOST }}
+          username: ${{ secrets.DEPLOY_SERVER_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            IMAGE_NAME=gcpassistant
+            IMAGE_TAG=${{ github.sha }}
+            GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}
+
+            sudo docker network create --driver bridge app-network || true
+
+            sudo docker stop $IMAGE_NAME || true
+            sudo docker rm $IMAGE_NAME || true
+            
+              # 서비스 계정 키 파일로 저장
+            echo '${{ secrets.GCP_SA_KEY }}' > gcp_sa_key.json
+            
+            # Docker 인증
+            cat gcp_sa_key.json | sudo docker login -u _json_key --password-stdin https://us-central1-docker.pkg.dev
+            
+            # 이미지 pull 후 컨테이너 실행
+            sudo docker pull us-central1-docker.pkg.dev/$GCP_PROJECT_ID/docker/$IMAGE_NAME:$IMAGE_TAG
+            
+            sudo docker run -d \
+            --name $IMAGE_NAME \
+            --network app-network \
+            -p 8080:8080 \
+            -e MYSQL_HOST=${{ secrets.MYSQL_HOST }} \
+            -e MYSQL_DB=${{ secrets.MYSQL_DB }} \
+            -e MYSQL_USER=${{ secrets.MYSQL_USER }} \
+            -e MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }} \
+            -e DISCORD_BOT_TOKEN=${{ secrets.DISCORD_BOT_TOKEN }} \
+            -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
+            -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+            us-central1-docker.pkg.dev/$GCP_PROJECT_ID/docker/$IMAGE_NAME:$IMAGE_TAG
+            
+            # 임시 키 파일 삭제
+            rm -f gcp_sa_key.json
