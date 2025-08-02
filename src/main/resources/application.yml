@@ -35,14 +35,8 @@ spring:
       ddl-auto: update # 또는 validate, none 등
 
 server:
-  port: 8443
-  ssl:
-    enabled: true
-    key-store: /etc/letsencrypt/live/gcpassist.com/keystore.p12
-    key-store-type: PKCS12
-    key-store-password: qkrwlsdud1121
-    key-alias: tomcat
-
+  port: 8080
+  address: 0.0.0.0
 security:
   crypto:
     aes-key: "4328175493264413"
