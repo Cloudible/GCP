@@ -54,7 +54,7 @@ public class GcpBotService extends ListenerAdapter {
                         .encodeToString(infoRaw.getBytes(StandardCharsets.UTF_8));
 
                 String redirectUri = UriComponentsBuilder
-                        .fromHttpUrl("https://gcpassist.com:8080/oauth2/authorization/google")
+                        .fromHttpUrl("https://gcpassist.com:8443/oauth2/authorization/google")
                         .queryParam("access_type", "offline")
                         .queryParam("mode", "login")
                         .queryParam("redirect_uri", "https://gcpassist.com?info=" + encodedInfo)
