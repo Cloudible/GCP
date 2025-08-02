@@ -44,6 +44,6 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
     }
 
     private boolean isValidRedirectUri(String uri) {
-        return uri.startsWith("/") || uri.startsWith("http://gcpassist.com");
+        return uri.startsWith("/") || uri.startsWith("https://gcpassist.com");
     }
 }
