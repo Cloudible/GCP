@@ -3,7 +3,6 @@ package com.gcp.domain.gcp.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
-import com.gcp.domain.gcp.util.GcpAuthUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +20,6 @@ public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final DiscordUserRepository discordUserRepository;
-    private final GcpAuthUtil gcpAuthUtil;
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
 

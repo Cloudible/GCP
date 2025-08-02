@@ -19,14 +19,11 @@ import org.springframework.util.StringUtils;
 @Slf4j
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private OAuth2UserRequest oAuth2UserRequest;
     private final DiscordUserRepository userRepository;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest oAuth2UserRequest) throws OAuth2AuthenticationProcessingException {
         log.info("🔍 OAuth2UserService: 사용자 정보 요청 시작");
-        this.oAuth2UserRequest = oAuth2UserRequest;
-
         OAuth2User oAuth2User = super.loadUser(oAuth2UserRequest);
         log.info("🔍 OAuth2UserService: 사용자 정보 로드 완료 -> {}", oAuth2User.getAttributes());
 
