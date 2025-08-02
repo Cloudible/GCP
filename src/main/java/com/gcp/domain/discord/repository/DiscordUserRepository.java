@@ -14,4 +14,13 @@ public interface DiscordUserRepository extends JpaRepository<DiscordUser, Long> 
     @Query("SELECT u FROM DiscordUser u WHERE u.userId = :userId AND u.guildId = :guildId")
     Optional<DiscordUser> findByUserIdAndGuildId(@Param("userId") String userId,
                                                    @Param("guildId") String guildId);
+
+    @Query("SELECT u FROM DiscordUser u WHERE u.googleAccessToken = :googleAccessToken")
+    Optional<DiscordUser> findByGoogleAccessToken(@Param("googleAccessToken") String googleAccessToken);
+
+    @Query("SELECT u.googleAccessToken FROM DiscordUser u WHERE u.userId = :userId AND u.guildId = :guildId")
+    Optional<String> findAccessTokenByUserIdAndGuildId(@Param("userId") String userId,
+                                                       @Param("guildId") String guildId);
+
+
 }
