@@ -57,9 +57,9 @@ public class GcpBotService extends ListenerAdapter {
                         .fromHttpUrl("https://gcpassist.com/oauth2/authorization/google")
                         .queryParam("access_type", "offline")
                         .queryParam("mode", "login")
-                        .queryParam("redirect_uri", "https://gcpassist.com?info=" + encodedInfo)
                         .queryParam("userId", userId)
                         .queryParam("guildId", guildId)
+                        .queryParam("redirect_uri", "https://gcpassist.com?info=" + encodedInfo)
                         .build()
                         .toUriString();
 
