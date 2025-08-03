@@ -10,6 +10,7 @@ import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
@@ -50,16 +51,22 @@ public class GcpBotService extends ListenerAdapter {
                         .orElse(author.getDefaultAvatarUrl());
 
                 String infoRaw = userName + "|" + guildName + "|" + userProfile;
+                // Base64로 info 인코딩
                 String encodedInfo = Base64.getUrlEncoder()
                         .encodeToString(infoRaw.getBytes(StandardCharsets.UTF_8));
 
+// redirect_uri 전체 URL 인코딩
+                String rawRedirectUrl = "https://gcpassist.com?info=" + encodedInfo;
+                String encodedRedirectUrl = URLEncoder.encode(rawRedirectUrl, StandardCharsets.UTF_8);
+
+// 최종 요청 URL
                 String redirectUri = UriComponentsBuilder
                         .fromHttpUrl("https://gcpassist.com/oauth2/authorization/google")
                         .queryParam("access_type", "offline")
                         .queryParam("mode", "login")
+                        .queryParam("redirect_uri", encodedRedirectUrl) // ✅ 핵심
                         .queryParam("userId", userId)
                         .queryParam("guildId", guildId)
-                        .queryParam("redirect_uri", "https://gcpassist.com?info=" + encodedInfo)
                         .build()
                         .toUriString();
 
