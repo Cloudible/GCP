@@ -7,6 +7,8 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -37,12 +39,24 @@ public class CustomAuthorizationRequestResolver implements OAuth2AuthorizationRe
 
         Map<String, Object> extraParams = new HashMap<>(req.getAdditionalParameters());
         extraParams.put("access_type", "offline");
-        // 프로덕션에선 제거
-        extraParams.put("prompt", "consent");
+        extraParams.put("prompt", "consent"); // 프로덕션에서 필요 없으면 빼도 됨
+
+        // base state 유지
+        String baseState = req.getState();
+        StringBuilder combinedState = new StringBuilder(baseState != null ? baseState : "");
+
+        if (userId != null && !userId.isBlank()) {
+            combinedState.append(combinedState.length() > 0 ? "&" : "")
+                    .append("userId=").append(URLEncoder.encode(userId, StandardCharsets.UTF_8));
+        }
+        if (guildId != null && !guildId.isBlank()) {
+            combinedState.append(combinedState.length() > 0 ? "&" : "")
+                    .append("guildId=").append(URLEncoder.encode(guildId, StandardCharsets.UTF_8));
+        }
 
         return OAuth2AuthorizationRequest.from(req)
                 .additionalParameters(extraParams)
-                .state("userId=" + userId + "&guildId=" + guildId)
+                .state(combinedState.toString())
                 .build();
     }
 }
