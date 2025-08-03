@@ -37,6 +37,8 @@ spring:
 server:
   port: 8080
   address: 0.0.0.0
+  forward-headers-strategy: framework
+
 security:
   crypto:
     aes-key: "4328175493264413"
