@@ -19,7 +19,7 @@ spring:
               - https://www.googleapis.com/auth/compute
               - https://www.googleapis.com/auth/compute.readonly
               - https://www.googleapis.com/auth/logging.read
-        redirect-uri: "{baseUrl}/login/oauth2/code/google"
+        redirect-uri: "https://gcpassist.com/login/oauth2/code/google"
 
         provider:
           google:
