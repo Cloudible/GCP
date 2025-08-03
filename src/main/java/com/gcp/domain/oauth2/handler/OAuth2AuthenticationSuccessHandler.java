@@ -65,7 +65,7 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             String state = request.getParameter("state");
 
             Map<String, String> parsed = Arrays.stream(state.split("&"))
-                    .map(s -> s.split("="))
+                    .map(s -> s.split("=", 2))
                     .filter(arr -> arr.length == 2)
                     .collect(Collectors.toMap(arr -> arr[0], arr -> arr[1]));
 
