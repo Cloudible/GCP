@@ -22,6 +22,11 @@ dependencies {
 	implementation 'com.google.cloud:google-cloud-compute:1.14.0' // Compute Engine API
 	implementation 'com.google.cloud:google-cloud-billing' // GCP Billing API
 	implementation 'com.google.cloud:google-cloud-monitoring' // Cloud Monitoring API
+	implementation "com.google.cloud:google-cloud-resourcemanager"
+	implementation "com.google.cloud:google-cloud-compute"
+	implementation "com.google.cloud:google-cloud-logging"
+
+
 	implementation 'com.google.api:gax-httpjson:0.107.0'
 	implementation 'com.google.auth:google-auth-library-oauth2-http' // GCP 인증 라이브러리
 	implementation 'org.springframework.boot:spring-boot-starter-web' // Spring Boot 웹 서버
