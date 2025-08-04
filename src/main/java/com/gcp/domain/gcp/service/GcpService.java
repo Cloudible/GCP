@@ -6,6 +6,8 @@ import com.gcp.domain.discord.repository.DiscordUserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -193,6 +195,29 @@ public class GcpService {
 
         return parseVmResponse(response.getBody());
     }
+
+    public List<String> getProjectIds(String userId, String guildId) {
+        String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<String> entity = new HttpEntity<>(null, headers);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        JSONObject json = new JSONObject(response.getBody());
+        JSONArray projects = json.getJSONArray("projects");
+
+        List<String> projectIds = new ArrayList<>();
+        for (int i = 0; i < projects.length(); i++) {
+            projectIds.add(projects.getJSONObject(i).getString("projectId"));
+        }
+        return projectIds;
+    }
+
+
 
     private static List<Map<String, String>> parseVmResponse(String json) throws IOException {
         List<Map<String, String>> vmList = new ArrayList<>();
