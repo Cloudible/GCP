@@ -46,6 +46,10 @@ public class GcpBotService extends ListenerAdapter {
                         : userName + "님은 " + guildName + "에 이미 등록되어 있습니다.";
                 event.reply(responseMsg).queue();
             }
+            case "explore" -> {
+                List<String> userProjectIds = gcpService.getProjectIds(userId, guildId);
+                event.reply(String.valueOf(userProjectIds)).queue();;
+            }
             case "register" -> {
                 String userProfile = Optional.ofNullable(author.getAvatarUrl())
                         .orElse(author.getDefaultAvatarUrl());
