@@ -40,6 +40,7 @@ public class DiscordBotConfig {
                                 .addSubcommands(
                                         new SubcommandData("init", "디스코드 유저 등록"),
                                         new SubcommandData("register", "Google 계정 연동"),
+                                        new SubcommandData("explore", "소속 프로젝트 ID 목록 조회"),
                                         new SubcommandData("start", "VM 시작")
                                                 .addOption(OptionType.STRING, "vm_name", "시작할 VM 이름", true),
                                         new SubcommandData("stop", "VM 정지")
