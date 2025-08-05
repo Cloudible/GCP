@@ -8,6 +8,7 @@ import lombok.*;
 @Entity
 @Table(name = "gcp_project")
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
