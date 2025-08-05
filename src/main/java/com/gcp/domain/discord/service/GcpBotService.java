@@ -1,5 +1,6 @@
 package com.gcp.domain.discord.service;
 
+import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Guild;
@@ -21,6 +22,7 @@ import java.util.Optional;
 public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
     private final DiscordUserService discordUserService;
+    private final GcpProjectCommandService gcpProjectCommandService;
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
@@ -46,11 +48,13 @@ public class GcpBotService extends ListenerAdapter {
                         : userName + "님은 " + guildName + "에 이미 등록되어 있습니다.";
                 event.reply(responseMsg).queue();
             }
-            case "explore" -> {
+
+            case "project-list" -> {
                 List<String> userProjectIds = gcpService.getProjectIds(userId, guildId);
                 event.reply(String.valueOf(userProjectIds)).queue();;
             }
-            case "register" -> {
+
+            case "login" -> {
                 String userProfile = Optional.ofNullable(author.getAvatarUrl())
                         .orElse(author.getDefaultAvatarUrl());
 
@@ -76,6 +80,17 @@ public class GcpBotService extends ListenerAdapter {
 
                 event.reply("👇 아래 링크를 클릭해서 Google 계정을 연결해주세요:\n" + redirectUri).queue();
             }
+
+            case "project-register" -> {
+                try{
+                    String projectId = getRequiredOption(event, "project_id");
+                    gcpProjectCommandService.insertNewGcpProject(userId, guildId, projectId);
+                    event.reply("프로젝트가 등록되었습니다.").queue();
+                } catch (RuntimeException e){
+                    event.reply(e.getMessage()).queue();
+                }
+            }
+
             case "start" -> {
                 String vmName = getRequiredOption(event, "vm_name");
                 event.reply(gcpService.startVM(userId, guildId, vmName)).queue();
