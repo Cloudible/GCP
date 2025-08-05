@@ -94,10 +94,24 @@ public class GcpBotService extends ListenerAdapter {
 
             case "zone-list" -> {
                 try {
-                    List<ProjectZoneDto> result = gcpService.getZones(userId, guildId);
-                    event.reply(result.toString()).queue();;
+                    List<ProjectZoneDto> result = gcpService.getActiveInstanceZones(userId, guildId);
+
+                    StringBuilder message = new StringBuilder("📦 **프로젝트별 인스턴스 활성 ZONE 목록**\n\n");
+                    for (ProjectZoneDto dto : result) {
+                        message.append("🔹 **")
+                                .append(dto.projectId())
+                                .append("**\n");
+
+                        for (String zone : dto.zoneList()) {
+                            message.append("↳ ").append(zone).append("\n");
+                        }
+
+                        message.append("\n");
+                    }
+
+                    event.reply(message.toString()).queue();
                 } catch (Exception e) {
-                    event.reply(e.getMessage()).queue();
+                    event.reply("❌ 오류 발생: " + e.getMessage()).queue();
                 }
             }
 

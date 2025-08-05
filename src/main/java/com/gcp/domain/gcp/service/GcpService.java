@@ -223,39 +223,45 @@ public class GcpService {
         return projectIds;
     }
 
-    public List<ProjectZoneDto> getZones(String userId, String guildId){
+    public List<ProjectZoneDto> getActiveInstanceZones(String userId, String guildId) {
         String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
         DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
-
         List<String> projectIds = gcpProjectRepository.findAllProjectIdsByDiscordUser(discordUser).orElseThrow();
-        List<ProjectZoneDto> everyZones = new ArrayList<>();
 
-        projectIds.forEach(
-                projectId -> {
-                    String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones", projectId);
-                    HttpHeaders headers = new HttpHeaders();
-                    headers.setBearerAuth(accessToken);
+        List<ProjectZoneDto> activeZones = new ArrayList<>();
 
-                    HttpEntity<Void> entity = new HttpEntity<>(headers);
-                    ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+        for (String projectId : projectIds) {
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/aggregated/instances", projectId);
 
-                    JSONObject json = new JSONObject(response.getBody());
-                    JSONArray items = json.getJSONArray("items");
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-                    List<String> zones = new ArrayList<>();
-                    for (int i = 0; i < items.length(); i++) {
-                        zones.add(items.getJSONObject(i).getString("name"));
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            JSONObject json = new JSONObject(response.getBody());
+            JSONObject items = json.getJSONObject("items");
+
+            List<String> zoneNames = new ArrayList<>();
+
+            for (String key : items.keySet()) {
+                JSONObject zoneInfo = items.getJSONObject(key);
+                if (zoneInfo.has("instances")) {
+                    // 키 형식: "zones/us-central1-a" → "us-central1-a" 추출
+                    if (key.startsWith("zones/")) {
+                        String zoneName = key.substring("zones/".length());
+                        zoneNames.add(zoneName);
                     }
-                    ProjectZoneDto projectZoneDto = ProjectZoneDto.builder()
-                            .projectId(projectId)
-                            .zoneList(zones)
-                            .build();
-                    everyZones.add(projectZoneDto);
                 }
-        );
+            }
 
+            ProjectZoneDto dto = ProjectZoneDto.builder()
+                    .projectId(projectId)
+                    .zoneList(zoneNames)
+                    .build();
+            activeZones.add(dto);
+        }
 
-        return everyZones;
+        return activeZones;
     }
 
 
