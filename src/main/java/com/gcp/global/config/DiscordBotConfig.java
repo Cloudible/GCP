@@ -43,6 +43,7 @@ public class DiscordBotConfig {
                                         new SubcommandData("project-list", "소속 프로젝트 ID 목록 조회"),
                                         new SubcommandData("project-register", "프로젝트 ID를 서버에 등록")
                                                 .addOption(OptionType.STRING, "project_id", "등록하고자 하는 프로젝트 ID", true),
+                                        new SubcommandData("zone-list", "프로젝트 내 VM Zone 목록 조회"),
                                         new SubcommandData("start", "VM 시작")
                                                 .addOption(OptionType.STRING, "vm_name", "시작할 VM 이름", true),
                                         new SubcommandData("stop", "VM 정지")

@@ -2,10 +2,15 @@ package com.gcp.domain.gcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
+import com.gcp.domain.gcp.dto.ProjectZoneDto;
+import com.gcp.domain.gcp.repository.GcpProjectRepository;
+import com.google.cloud.compute.v1.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.A;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.*;
@@ -22,6 +27,7 @@ public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final DiscordUserRepository discordUserRepository;
+    private final GcpProjectRepository gcpProjectRepository;
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
 
@@ -217,6 +223,40 @@ public class GcpService {
         return projectIds;
     }
 
+    public List<ProjectZoneDto> getZones(String userId, String guildId){
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+        DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+
+        List<String> projectIds = gcpProjectRepository.findAllProjectIdsByDiscordUser(discordUser).orElseThrow();
+        List<ProjectZoneDto> everyZones = new ArrayList<>();
+
+        projectIds.forEach(
+                projectId -> {
+                    String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones", projectId);
+                    HttpHeaders headers = new HttpHeaders();
+                    headers.setBearerAuth(accessToken);
+
+                    HttpEntity<Void> entity = new HttpEntity<>(headers);
+                    ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+                    JSONObject json = new JSONObject(response.getBody());
+                    JSONArray items = json.getJSONArray("items");
+
+                    List<String> zones = new ArrayList<>();
+                    for (int i = 0; i < items.length(); i++) {
+                        zones.add(items.getJSONObject(i).getString("name"));
+                    }
+                    ProjectZoneDto projectZoneDto = ProjectZoneDto.builder()
+                            .projectId(projectId)
+                            .zoneList(zones)
+                            .build();
+                    everyZones.add(projectZoneDto);
+                }
+        );
+
+
+        return everyZones;
+    }
 
 
     private static List<Map<String, String>> parseVmResponse(String json) throws IOException {

@@ -1,5 +1,6 @@
 package com.gcp.domain.discord.service;
 
+import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
 import lombok.RequiredArgsConstructor;
@@ -87,6 +88,15 @@ public class GcpBotService extends ListenerAdapter {
                     gcpProjectCommandService.insertNewGcpProject(userId, guildId, projectId);
                     event.reply("프로젝트가 등록되었습니다.").queue();
                 } catch (RuntimeException e){
+                    event.reply(e.getMessage()).queue();
+                }
+            }
+
+            case "zone-list" -> {
+                try {
+                    List<ProjectZoneDto> result = gcpService.getZones(userId, guildId);
+                    event.reply(result.toString()).queue();;
+                } catch (Exception e) {
                     event.reply(e.getMessage()).queue();
                 }
             }
