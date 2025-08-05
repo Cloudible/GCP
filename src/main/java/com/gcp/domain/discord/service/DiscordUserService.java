@@ -10,9 +10,9 @@ import org.springframework.stereotype.Service;
 public class DiscordUserService {
     private final DiscordUserRepository discordUserRepository;
 
-    //
+
     public boolean insertDiscordUser(String userId, String userName, String guildId, String guildName){
-        if (discordUserRepository.findByUserIdAndGuildId(userId, guildId).isEmpty()) {
+        if (discordUserRepository.existsByUserIdAndGuildId(userId, guildId)) {
             DiscordUser discordUser = new DiscordUser(userId, userName, guildId, guildName);
             discordUserRepository.save(discordUser);
             return true;
