@@ -78,8 +78,8 @@ public class OAuth2AuthenticationSuccessHandler extends SimpleUrlAuthenticationS
             }
 
             DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId)
-                           .orElseThrow(() -> new IllegalStateException(
-                                    String.format("DiscordUser를 찾을 수 없습니다: userId=%s, guildId=%s", userId, guildId)));
+                    .orElseThrow(() -> new IllegalStateException(
+                            String.format("DiscordUser를 찾을 수 없습니다: userId=%s, guildId=%s", userId, guildId)));
 
             String googleAccessToken = client.getAccessToken().getTokenValue();
             String googleRefreshToken = client.getRefreshToken().getTokenValue();
