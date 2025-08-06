@@ -32,8 +32,6 @@ public class GcpService {
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
 
 
-
-
     public String startVM(String userId, String guildId, String vmName) {
         try {
             String url = String.format(
@@ -231,34 +229,36 @@ public class GcpService {
         List<ProjectZoneDto> activeZones = new ArrayList<>();
 
         for (String projectId : projectIds) {
-            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/aggregated/instances", projectId);
+            try {
+                String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/aggregated/instances", projectId);
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(accessToken);
+                HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            JSONObject json = new JSONObject(response.getBody());
-            JSONObject items = json.getJSONObject("items");
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+                JSONObject json = new JSONObject(response.getBody());
+                JSONObject items = json.getJSONObject("items");
 
-            List<String> zoneNames = new ArrayList<>();
+                List<String> zoneNames = new ArrayList<>();
 
-            for (String key : items.keySet()) {
-                JSONObject zoneInfo = items.getJSONObject(key);
-                if (zoneInfo.has("instances")) {
-                    // 키 형식: "zones/us-central1-a" → "us-central1-a" 추출
-                    if (key.startsWith("zones/")) {
+                for (String key : items.keySet()) {
+                    JSONObject zoneInfo = items.getJSONObject(key);
+                    if (zoneInfo.has("instances") && key.startsWith("zones/")) {
                         String zoneName = key.substring("zones/".length());
                         zoneNames.add(zoneName);
                     }
                 }
-            }
 
-            ProjectZoneDto dto = ProjectZoneDto.builder()
-                    .projectId(projectId)
-                    .zoneList(zoneNames)
-                    .build();
-            activeZones.add(dto);
+                ProjectZoneDto dto = ProjectZoneDto.builder()
+                        .projectId(projectId)
+                        .zoneList(zoneNames)
+                        .build();
+                activeZones.add(dto);
+
+            } catch (Exception e) {
+                log.warn("프로젝트 Zone 조회 실패 {}: {}", projectId, e.getMessage());
+            }
         }
 
         return activeZones;
