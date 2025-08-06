@@ -17,10 +17,14 @@ public class GcpProjectCommandServiceImpl implements GcpProjectCommandService{
     @Override
     public void insertNewGcpProject(String userId, String guildId, String projectId) {
         DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow(
-                () -> new RuntimeException("이미 등록된 프로젝트 입니다.")
+                () -> new RuntimeException("해당 사용자를 찾을 수 없습니다. /gcp init 명령어를 먼저 실행해주세요.")
         );
 
-        GcpProject gcpProject = GcpProject.create(projectId, discordUser);
-        gcpProjectRepository.save(gcpProject);
+        if(!gcpProjectRepository.existsByProjectIdAndDiscordUser(projectId, discordUser)){
+            GcpProject gcpProject = GcpProject.create(projectId, discordUser);
+            gcpProjectRepository.save(gcpProject);
+        } else{
+            throw new RuntimeException("이미 등록된 프로젝트 입니다.");
+        }
     }
 }
