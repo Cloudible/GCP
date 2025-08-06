@@ -218,7 +218,7 @@ public class GcpBotService extends ListenerAdapter {
                 String result = gcpService.createFirewallRule(userId, guildId, port, sourceRanges);
                 event.reply(result).queue();
             }
-            case "firewal-delete" -> {
+            case "firewall-delete" -> {
                 int port = Optional.ofNullable(event.getOption("port"))
                         .map(OptionMapping::getAsInt)
                         .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
