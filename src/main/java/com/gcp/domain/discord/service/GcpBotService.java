@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,7 +53,15 @@ public class GcpBotService extends ListenerAdapter {
 
             case "project-list" -> {
                 List<String> userProjectIds = gcpService.getProjectIds(userId, guildId);
-                event.reply(String.valueOf(userProjectIds)).queue();;
+                if (userProjectIds.isEmpty()) {
+                    event.reply("📭 참여 중인 프로젝트가 없습니다.").queue();
+                } else {
+                    String message = "📦 **참여 중인 프로젝트 목록**\n" +
+                            userProjectIds.stream()
+                            .map(id -> "• " + id)
+                            .collect(Collectors.joining("\n"));
+                    event.reply(message).queue();
+                }
             }
 
             case "login" -> {
