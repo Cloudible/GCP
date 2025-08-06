@@ -199,7 +199,7 @@ public class GcpBotService extends ListenerAdapter {
 
                 event.getHook().sendMessage(sb.toString()).queue();
             }
-            case "firewal-create" -> {
+            case "firewall-create" -> {
                 int port = Optional.ofNullable(event.getOption("port"))
                         .map(OptionMapping::getAsInt)
                         .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
