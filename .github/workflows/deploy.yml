@@ -2,7 +2,7 @@ name: CI / CD
 
 on:
   push:
-    branches: [feat/#11-get-projectid-zone]
+    branches: [main]
 
 jobs:
   CI:
