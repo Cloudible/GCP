@@ -16,6 +16,11 @@ public interface DiscordUserRepository extends JpaRepository<DiscordUser, Long> 
     Optional<DiscordUser> findByUserIdAndGuildId(@Param("userId") String userId,
                                                    @Param("guildId") String guildId);
 
+
+    boolean existsByUserIdAndGuildId(String userId, String guildId);
+
+
+
     @Query("SELECT u FROM DiscordUser u WHERE u.googleAccessToken = :googleAccessToken")
     Optional<DiscordUser> findByGoogleAccessToken(@Param("googleAccessToken") String googleAccessToken);
 

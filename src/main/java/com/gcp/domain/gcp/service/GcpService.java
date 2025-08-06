@@ -2,10 +2,17 @@ package com.gcp.domain.gcp.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
+import com.gcp.domain.gcp.dto.ProjectZoneDto;
+import com.gcp.domain.gcp.repository.GcpProjectRepository;
+import com.google.cloud.compute.v1.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.A;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -20,10 +27,9 @@ public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final DiscordUserRepository discordUserRepository;
+    private final GcpProjectRepository gcpProjectRepository;
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
-
-
 
 
     public String startVM(String userId, String guildId, String vmName) {
@@ -193,6 +199,71 @@ public class GcpService {
 
         return parseVmResponse(response.getBody());
     }
+
+    public List<String> getProjectIds(String userId, String guildId) {
+        String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        HttpEntity<String> entity = new HttpEntity<>(null, headers);
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+
+        JSONObject json = new JSONObject(response.getBody());
+        JSONArray projects = json.getJSONArray("projects");
+
+        List<String> projectIds = new ArrayList<>();
+        for (int i = 0; i < projects.length(); i++) {
+            projectIds.add(projects.getJSONObject(i).getString("projectId"));
+        }
+        return projectIds;
+    }
+
+    public List<ProjectZoneDto> getActiveInstanceZones(String userId, String guildId) {
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+        DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+        List<String> projectIds = gcpProjectRepository.findAllProjectIdsByDiscordUser(discordUser).orElseThrow();
+
+        List<ProjectZoneDto> activeZones = new ArrayList<>();
+
+        for (String projectId : projectIds) {
+            try {
+                String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/aggregated/instances", projectId);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(accessToken);
+                HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+                JSONObject json = new JSONObject(response.getBody());
+                JSONObject items = json.getJSONObject("items");
+
+                List<String> zoneNames = new ArrayList<>();
+
+                for (String key : items.keySet()) {
+                    JSONObject zoneInfo = items.getJSONObject(key);
+                    if (zoneInfo.has("instances") && key.startsWith("zones/")) {
+                        String zoneName = key.substring("zones/".length());
+                        zoneNames.add(zoneName);
+                    }
+                }
+
+                ProjectZoneDto dto = ProjectZoneDto.builder()
+                        .projectId(projectId)
+                        .zoneList(zoneNames)
+                        .build();
+                activeZones.add(dto);
+
+            } catch (Exception e) {
+                log.warn("프로젝트 Zone 조회 실패 {}: {}", projectId, e.getMessage());
+            }
+        }
+
+        return activeZones;
+    }
+
 
     private static List<Map<String, String>> parseVmResponse(String json) throws IOException {
         List<Map<String, String>> vmList = new ArrayList<>();

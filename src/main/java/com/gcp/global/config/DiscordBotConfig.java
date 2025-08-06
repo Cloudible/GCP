@@ -39,7 +39,11 @@ public class DiscordBotConfig {
                         Commands.slash("gcp", "GCP 관련 명령어")
                                 .addSubcommands(
                                         new SubcommandData("init", "디스코드 유저 등록"),
-                                        new SubcommandData("register", "Google 계정 연동"),
+                                        new SubcommandData("login", "Google 계정 연동"),
+                                        new SubcommandData("project-list", "소속 프로젝트 ID 목록 조회"),
+                                        new SubcommandData("project-register", "프로젝트 ID를 서버에 등록")
+                                                .addOption(OptionType.STRING, "project_id", "등록하고자 하는 프로젝트 ID", true),
+                                        new SubcommandData("zone-list", "프로젝트 내 VM Zone 목록 조회"),
                                         new SubcommandData("start", "VM 시작")
                                                 .addOption(OptionType.STRING, "vm_name", "시작할 VM 이름", true),
                                         new SubcommandData("stop", "VM 정지")

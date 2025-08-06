@@ -1,5 +1,7 @@
 package com.gcp.domain.discord.service;
 
+import com.gcp.domain.gcp.dto.ProjectZoneDto;
+import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Guild;
@@ -15,12 +17,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
     private final DiscordUserService discordUserService;
+    private final GcpProjectCommandService gcpProjectCommandService;
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
@@ -46,7 +50,21 @@ public class GcpBotService extends ListenerAdapter {
                         : userName + "님은 " + guildName + "에 이미 등록되어 있습니다.";
                 event.reply(responseMsg).queue();
             }
-            case "register" -> {
+
+            case "project-list" -> {
+                List<String> userProjectIds = gcpService.getProjectIds(userId, guildId);
+                if (userProjectIds.isEmpty()) {
+                    event.reply("📭 참여 중인 프로젝트가 없습니다.").queue();
+                } else {
+                    String message = "📦 **참여 중인 프로젝트 목록**\n" +
+                            userProjectIds.stream()
+                            .map(id -> "• " + id)
+                            .collect(Collectors.joining("\n"));
+                    event.reply(message).queue();
+                }
+            }
+
+            case "login" -> {
                 String userProfile = Optional.ofNullable(author.getAvatarUrl())
                         .orElse(author.getDefaultAvatarUrl());
 
@@ -72,6 +90,40 @@ public class GcpBotService extends ListenerAdapter {
 
                 event.reply("👇 아래 링크를 클릭해서 Google 계정을 연결해주세요:\n" + redirectUri).queue();
             }
+
+            case "project-register" -> {
+                try{
+                    String projectId = getRequiredOption(event, "project_id");
+                    gcpProjectCommandService.insertNewGcpProject(userId, guildId, projectId);
+                    event.reply("프로젝트가 등록되었습니다.").queue();
+                } catch (RuntimeException e){
+                    event.reply(e.getMessage()).queue();
+                }
+            }
+
+            case "zone-list" -> {
+                try {
+                    List<ProjectZoneDto> result = gcpService.getActiveInstanceZones(userId, guildId);
+
+                    StringBuilder message = new StringBuilder("📦 **프로젝트별 인스턴스 활성 ZONE 목록**\n\n");
+                    for (ProjectZoneDto dto : result) {
+                        message.append("🔹 **")
+                                .append(dto.projectId())
+                                .append("**\n");
+
+                        for (String zone : dto.zoneList()) {
+                            message.append("↳ ").append(zone).append("\n");
+                        }
+
+                        message.append("\n");
+                    }
+
+                    event.reply(message.toString()).queue();
+                } catch (Exception e) {
+                    event.reply("❌ 오류 발생: " + e.getMessage()).queue();
+                }
+            }
+
             case "start" -> {
                 String vmName = getRequiredOption(event, "vm_name");
                 event.reply(gcpService.startVM(userId, guildId, vmName)).queue();
