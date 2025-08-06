@@ -18,4 +18,6 @@ public interface GcpProjectRepository extends JpaRepository<GcpProject, Long> {
 
     @Query("SELECT p.projectId FROM GcpProject p WHERE p.discordUser = :discordUser")
     Optional<List<String>> findAllProjectIdsByDiscordUser(DiscordUser discordUser);
+
+    boolean existsByProjectIdAndDiscordUser(String projectId, DiscordUser discordUser);
 }
