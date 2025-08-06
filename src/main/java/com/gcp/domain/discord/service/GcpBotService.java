@@ -1,5 +1,6 @@
 package com.gcp.domain.discord.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
@@ -16,6 +17,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -172,6 +174,62 @@ public class GcpBotService extends ListenerAdapter {
                 } catch (Exception e) {
                     event.reply("❌ VM 생성 중 오류 발생: " + e.getMessage()).queue();
                 }
+            }
+            case "firewall-list" -> {
+                event.deferReply().queue();
+
+                List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId);
+
+                if (rules.isEmpty()) {
+                    event.getHook().sendMessage("📭 조회된 방화벽 규칙이 없습니다.").queue();
+                    return;
+                }
+
+                StringBuilder sb = new StringBuilder("📌 현재 방화벽 규칙 목록 (TCP 기준):\n");
+
+                for (Map<String, Object> rule : rules) {
+                    String name = (String) rule.get("name");
+                    List<String> ports = (List<String>) rule.get("tcpPorts");
+                    JsonNode sourceRanges = (JsonNode) rule.get("sourceRanges");
+
+                    sb.append("• `").append(name).append("` - 포트: ")
+                            .append(ports.isEmpty() ? "없음" : String.join(", ", ports))
+                            .append(", IP 범위: ").append(sourceRanges.toString()).append("\n");
+                }
+
+                event.getHook().sendMessage(sb.toString()).queue();
+            }
+            case "firewall-create" -> {
+                int port = Optional.ofNullable(event.getOption("port"))
+                        .map(OptionMapping::getAsInt)
+                        .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
+
+                if (port < 1 || port > 65535) {
+                    event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
+                    return;
+                }
+
+                String ipRangeRaw = Optional.ofNullable(event.getOption("source_ranges"))
+                        .map(OptionMapping::getAsString)
+                        .orElse("0.0.0.0/0");
+
+                List<String> sourceRanges = List.of(ipRangeRaw.split("\\s*,\\s*"));
+
+                String result = gcpService.createFirewallRule(userId, guildId, port, sourceRanges);
+                event.reply(result).queue();
+            }
+            case "firewall-delete" -> {
+                int port = Optional.ofNullable(event.getOption("port"))
+                        .map(OptionMapping::getAsInt)
+                        .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
+
+                if (port < 1 || port > 65535) {
+                    event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
+                    return;
+                }
+
+                String result = gcpService.deleteFirewallRule(userId, guildId, port);
+                event.reply(result).queue();
             }
             default -> event.reply("❌ 지원하지 않는 명령어입니다.").queue();
         }

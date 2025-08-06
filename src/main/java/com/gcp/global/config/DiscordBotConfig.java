@@ -59,7 +59,14 @@ public class DiscordBotConfig {
                                                 .addOption(OptionType.STRING, "os_image", "OS 이미지", true)
                                                 .addOption(OptionType.INTEGER, "boot_disk_gb", "부트 디스크 크기(GB)", true)
                                                 .addOption(OptionType.BOOLEAN, "allow_http", "HTTP 허용 여부", true)
-                                                .addOption(OptionType.BOOLEAN, "allow_https", "HTTPS 허용 여부", true)
+                                                .addOption(OptionType.BOOLEAN, "allow_https", "HTTPS 허용 여부", true),
+                                        new SubcommandData("firewall-list","방화벽 리스트 조회"),
+                                        new SubcommandData("firewall-create", "방화벽 규칙 생성")
+                                                .addOption(OptionType.INTEGER, "port", "허용할 포트 번호", true)
+                                                .addOption(OptionType.STRING, "source_ranges", "허용할 IP 범위 (쉼표로 구분)", false),
+                                        new SubcommandData("firewall-delete", "특정 포트를 TCP 기준으로 방화벽에서 삭제")
+                                                .addOption(OptionType.INTEGER, "port", "삭제할 TCP 포트", true)
+
                                 )
                 ).queue();
 

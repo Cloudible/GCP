@@ -6,6 +6,7 @@ import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.compute.v1.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
@@ -15,9 +16,12 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -362,6 +366,118 @@ public class GcpService {
         } catch (Exception e) {
             log.error("❌ VM 생성 오류", e);
             return "❌ `" + vmName + "` VM 생성 실패!";
+        }
+    }
+    public List<Map<String, Object>> getFirewallRules(String userId, String guildId) {
+        try {
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", PROJECT_ID);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
+                    .orElseThrow();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode root = objectMapper.readTree(response.getBody());
+
+            List<Map<String, Object>> ruleList = new ArrayList<>();
+            if (root.has("items")) {
+                for (JsonNode rule : root.get("items")) {
+                    Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("name", rule.path("name").asText());
+                    map.put("direction", rule.path("direction").asText());
+                    map.put("sourceRanges", rule.path("sourceRanges"));
+                    map.put("targetTags", rule.path("targetTags"));
+
+                    List<String> tcpPorts = new ArrayList<>();
+                    for (JsonNode allow : rule.path("allowed")) {
+                        if ("tcp".equals(allow.path("IPProtocol").asText())) {
+                            for (JsonNode port : allow.path("ports")) {
+                                tcpPorts.add(port.asText());
+                            }
+                        }
+                    }
+                    map.put("tcpPorts", tcpPorts);
+                    ruleList.add(map);
+                }
+            }
+
+            return ruleList;
+
+        } catch (Exception e) {
+            log.error("❌ 방화벽 규칙 조회 오류", e);
+            return List.of(Map.of("error", "방화벽 규칙 조회 실패"));
+        }
+    }
+    public String createFirewallRule(String userId, String guildId, int port, List<String> sourceRanges) {
+        try {
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
+                    .orElseThrow();
+
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", PROJECT_ID);
+
+            String ruleName = "allow-custom-" + port;
+
+            Map<String, Object> body = Map.of(
+                    "name", ruleName,
+                    "direction", "INGRESS",
+                    "allowed", List.of(
+                            Map.of(
+                                    "IPProtocol", "tcp",
+                                    "ports", List.of(String.valueOf(port))
+                            )
+                    ),
+                    "sourceRanges", sourceRanges,
+                    "targetTags", List.of("custom-" + port)
+            );
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ObjectMapper mapper = new ObjectMapper();
+            String jsonBody = mapper.writeValueAsString(body);
+
+            HttpEntity<String> request = new HttpEntity<>(jsonBody, headers);
+            restTemplate.postForEntity(url, request, String.class);
+
+            return "✅ 포트 " + port + " 에 대한 방화벽 규칙이 생성되었습니다.";
+
+        } catch (HttpClientErrorException.Conflict e) {
+            return "⚠️ 이미 포트 " + port + " 에 대한 방화벽 규칙이 존재합니다.";
+        } catch (Exception e) {
+            log.error("❌ 방화벽 규칙 생성 실패", e);
+            return "❌ 방화벽 규칙 생성 중 오류가 발생했습니다.";
+        }
+    }
+
+    public String deleteFirewallRule(String userId, String guildId, int port) {
+        try {
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
+                    .orElseThrow();
+
+            String ruleName = "allow-custom-" + port;
+
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls/%s",
+                    PROJECT_ID, ruleName);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+
+            HttpEntity<Void> request = new HttpEntity<>(headers);
+            restTemplate.exchange(url, HttpMethod.DELETE, request, String.class);
+
+            return "🗑️ 포트 " + port + " 에 대한 방화벽 규칙이 삭제되었습니다.";
+
+        } catch (HttpClientErrorException.NotFound e) {
+            return "⚠️ 포트 " + port + " 에 대한 방화벽 규칙이 존재하지 않습니다.";
+        } catch (Exception e) {
+            log.error("❌ 방화벽 규칙 삭제 실패", e);
+            return "❌ 방화벽 규칙 삭제 중 오류가 발생했습니다.";
         }
     }
 }
