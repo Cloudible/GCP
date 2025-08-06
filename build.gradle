@@ -23,7 +23,6 @@ dependencies {
 	implementation 'com.google.cloud:google-cloud-billing' // GCP Billing API
 	implementation 'com.google.cloud:google-cloud-monitoring' // Cloud Monitoring API
 	implementation "com.google.cloud:google-cloud-resourcemanager"
-	implementation "com.google.cloud:google-cloud-compute"
 	implementation "com.google.cloud:google-cloud-logging"
 
 
@@ -44,7 +43,6 @@ dependencies {
 
 	implementation 'org.apache.httpcomponents:httpclient:4.5.13'
 
-	implementation 'com.google.cloud:google-cloud-logging:3.21.3'
 
 
 	implementation 'com.google.code.gson:gson' // JSON 처리
