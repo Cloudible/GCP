@@ -158,7 +158,7 @@ public class GcpBotService extends ListenerAdapter {
                 try {
                     event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
                 } catch (Exception e){
-                    event.reply("❌ 인스턴스 조회 중 오류가 발생했습니다.").queue();
+                    event.reply("❌ 인스턴스 조회 중 오류가 발생했습니다. " + e.getMessage()).queue();
                 }
             }
             case "create" -> {
