@@ -194,8 +194,8 @@ public class GcpBotService extends ListenerAdapter {
                 }
             }
             case "firewall-list" -> {
-                event.deferReply().queue();
                 try{
+                    event.deferReply().queue();
                     List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId);
 
                     if (rules.isEmpty()) {
@@ -219,8 +219,6 @@ public class GcpBotService extends ListenerAdapter {
                 } catch (RuntimeException e){
                     event.reply("❌ " + e.getMessage()).queue();
                 }
-
-
             }
             case "firewall-create" -> {
                 try{
