@@ -190,39 +190,49 @@ public class GcpService {
 
     @SneakyThrows
     public List<Map<String, String>> getVmList(String userId, String guildId) {
-        String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
-                PROJECT_ID, ZONE);
+        try {
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
+                    PROJECT_ID, ZONE);
 
-        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<String> entity = new HttpEntity<>(null, headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<String> entity = new HttpEntity<>(null, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        return parseVmResponse(response.getBody());
+            return parseVmResponse(response.getBody());
+        } catch (Exception e){
+            log.error("❌ VM 목록 조회 실패", e);
+            return null;
+        }
     }
 
     public List<String> getProjectIds(String userId, String guildId) {
-        String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
-        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+        try {
+            String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<String> entity = new HttpEntity<>(null, headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<String> entity = new HttpEntity<>(null, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        JSONObject json = new JSONObject(response.getBody());
-        JSONArray projects = json.getJSONArray("projects");
+            JSONObject json = new JSONObject(response.getBody());
+            JSONArray projects = json.getJSONArray("projects");
 
-        List<String> projectIds = new ArrayList<>();
-        for (int i = 0; i < projects.length(); i++) {
-            projectIds.add(projects.getJSONObject(i).getString("projectId"));
+            List<String> projectIds = new ArrayList<>();
+            for (int i = 0; i < projects.length(); i++) {
+                projectIds.add(projects.getJSONObject(i).getString("projectId"));
+            }
+            return projectIds;
+        } catch (Exception e) {
+            log.error("❌ 프로젝트 ID 조회 중 에러 발생", e);
+            return null;
         }
-        return projectIds;
     }
 
     public List<ProjectZoneDto> getActiveInstanceZones(String userId, String guildId) {
@@ -261,7 +271,8 @@ public class GcpService {
                 activeZones.add(dto);
 
             } catch (Exception e) {
-                log.warn("프로젝트 Zone 조회 실패 {}: {}", projectId, e.getMessage());
+                log.warn("❌ 프로젝트 Zone 조회 실패 {}", projectId, e);
+                return null;
             }
         }
 
