@@ -154,7 +154,13 @@ public class GcpBotService extends ListenerAdapter {
                 gcpService.enableVmNotifications();
                 event.reply("✅ GCP VM 상태 변경 시 알림을 받을 수 있습니다!").queue();
             }
-            case "list" -> event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
+            case "list" -> {
+                try {
+                    event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
+                } catch (Exception e){
+                    event.reply("❌ 인스턴스 조회 중 오류가 발생했습니다.").queue();
+                }
+            }
             case "create" -> {
                 try {
                     String vmName = getRequiredOption(event, "vm_name");
