@@ -7,6 +7,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,7 +34,9 @@ public class DiscordBotConfig {
                 .build();
 
         jda.awaitReady(); // 명령어 등록 전에 봇이 준비될 때까지 대기
-
+        OptionData osFamilyOption =
+                new OptionData(OptionType.STRING, "os_image", "OS 이미지 선택", true)
+                        .setAutoComplete(true);
 
         jda.updateCommands().addCommands(
                         Commands.slash("gcp", "GCP 관련 명령어")
@@ -56,7 +59,7 @@ public class DiscordBotConfig {
                                         new SubcommandData("create", "VM 생성")
                                                 .addOption(OptionType.STRING, "vm_name", "VM 이름", true)
                                                 .addOption(OptionType.STRING, "machine_type", "머신 타입", true)
-                                                .addOption(OptionType.STRING, "os_image", "OS 이미지", true)
+                                                .addOptions(osFamilyOption)
                                                 .addOption(OptionType.INTEGER, "boot_disk_gb", "부트 디스크 크기(GB)", true)
                                                 .addOption(OptionType.BOOLEAN, "allow_http", "HTTP 허용 여부", true)
                                                 .addOption(OptionType.BOOLEAN, "allow_https", "HTTPS 허용 여부", true),
