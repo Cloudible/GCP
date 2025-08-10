@@ -127,26 +127,38 @@ public class GcpBotService extends ListenerAdapter {
             }
 
             case "start" -> {
-                String vmName = getRequiredOption(event, "vm_name");
-                event.reply(gcpService.startVM(userId, guildId, vmName)).queue();
+                try{
+                    String vmName = getRequiredOption(event, "vm_name");
+                    event.reply(gcpService.startVM(userId, guildId, vmName)).queue();
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();;
+                }
             }
             case "stop" -> {
-                String vmName = getRequiredOption(event, "vm_name");
-                event.reply(gcpService.stopVM(userId, guildId, vmName)).queue();
+                try {
+                    String vmName = getRequiredOption(event, "vm_name");
+                    event.reply(gcpService.stopVM(userId, guildId, vmName)).queue();
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();
+                }
             }
             case "logs" -> {
-                String vmName = getRequiredOption(event, "vm_name");
-                event.deferReply().queue();
+                try{
+                    String vmName = getRequiredOption(event, "vm_name");
+                    event.deferReply().queue();
 
-                List<String> logs = gcpService.getVmLogs(userId, guildId, vmName);
+                    List<String> logs = gcpService.getVmLogs(userId, guildId, vmName);
 
-                if (logs.isEmpty()) {
-                    event.getHook().sendMessage("📭 로그가 없습니다.").queue();
-                    return;
-                }
+                    if (logs.isEmpty()) {
+                        event.getHook().sendMessage("📭 로그가 없습니다.").queue();
+                        return;
+                    }
 
-                for (String log : logs) {
-                    event.getHook().sendMessage("```bash\n" + log + "\n```").queue();
+                    for (String log : logs) {
+                        event.getHook().sendMessage("```bash\n" + log + "\n```").queue();
+                    }
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();
                 }
             }
             case "cost" -> event.reply(gcpService.getEstimatedCost()).queue();
@@ -154,7 +166,13 @@ public class GcpBotService extends ListenerAdapter {
                 gcpService.enableVmNotifications();
                 event.reply("✅ GCP VM 상태 변경 시 알림을 받을 수 있습니다!").queue();
             }
-            case "list" -> event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
+            case "list" -> {
+                try {
+                    event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
+                } catch (Exception e){
+                    event.reply("보유 중인 인스턴스가 없습니다.").queue();
+                }
+            }
             case "create" -> {
                 try {
                     String vmName = getRequiredOption(event, "vm_name");
@@ -172,64 +190,75 @@ public class GcpBotService extends ListenerAdapter {
                     String result = gcpService.createVM(userId, guildId, vmName, machineType, osImage, bootDiskGb, allowHttp, allowHttps);
                     event.reply(result).queue();
                 } catch (Exception e) {
-                    event.reply("❌ VM 생성 중 오류 발생: " + e.getMessage()).queue();
+                    event.reply("❌ " + e.getMessage()).queue();
                 }
             }
             case "firewall-list" -> {
-                event.deferReply().queue();
+                try{
+                    event.deferReply().queue();
+                    List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId);
 
-                List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId);
+                    if (rules.isEmpty()) {
+                        event.getHook().sendMessage("📭 조회된 방화벽 규칙이 없습니다.").queue();
+                        return;
+                    }
 
-                if (rules.isEmpty()) {
-                    event.getHook().sendMessage("📭 조회된 방화벽 규칙이 없습니다.").queue();
-                    return;
+                    StringBuilder sb = new StringBuilder("📌 현재 방화벽 규칙 목록 (TCP 기준):\n");
+
+                    for (Map<String, Object> rule : rules) {
+                        String name = (String) rule.get("name");
+                        List<String> ports = (List<String>) rule.get("tcpPorts");
+                        JsonNode sourceRanges = (JsonNode) rule.get("sourceRanges");
+
+                        sb.append("• `").append(name).append("` - 포트: ")
+                                .append(ports.isEmpty() ? "없음" : String.join(", ", ports))
+                                .append(", IP 범위: ").append(sourceRanges.toString()).append("\n");
+                    }
+
+                    event.getHook().sendMessage(sb.toString()).queue();
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();
                 }
-
-                StringBuilder sb = new StringBuilder("📌 현재 방화벽 규칙 목록 (TCP 기준):\n");
-
-                for (Map<String, Object> rule : rules) {
-                    String name = (String) rule.get("name");
-                    List<String> ports = (List<String>) rule.get("tcpPorts");
-                    JsonNode sourceRanges = (JsonNode) rule.get("sourceRanges");
-
-                    sb.append("• `").append(name).append("` - 포트: ")
-                            .append(ports.isEmpty() ? "없음" : String.join(", ", ports))
-                            .append(", IP 범위: ").append(sourceRanges.toString()).append("\n");
-                }
-
-                event.getHook().sendMessage(sb.toString()).queue();
             }
             case "firewall-create" -> {
-                int port = Optional.ofNullable(event.getOption("port"))
-                        .map(OptionMapping::getAsInt)
-                        .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
+                try{
+                    int port = Optional.ofNullable(event.getOption("port"))
+                            .map(OptionMapping::getAsInt)
+                            .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
 
-                if (port < 1 || port > 65535) {
-                    event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
-                    return;
+                    if (port < 1 || port > 65535) {
+                        event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
+                        return;
+                    }
+
+                    String ipRangeRaw = Optional.ofNullable(event.getOption("source_ranges"))
+                            .map(OptionMapping::getAsString)
+                            .orElse("0.0.0.0/0");
+
+                    List<String> sourceRanges = List.of(ipRangeRaw.split("\\s*,\\s*"));
+
+                    String result = gcpService.createFirewallRule(userId, guildId, port, sourceRanges);
+                    event.reply(result).queue();
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();
                 }
-
-                String ipRangeRaw = Optional.ofNullable(event.getOption("source_ranges"))
-                        .map(OptionMapping::getAsString)
-                        .orElse("0.0.0.0/0");
-
-                List<String> sourceRanges = List.of(ipRangeRaw.split("\\s*,\\s*"));
-
-                String result = gcpService.createFirewallRule(userId, guildId, port, sourceRanges);
-                event.reply(result).queue();
             }
             case "firewall-delete" -> {
-                int port = Optional.ofNullable(event.getOption("port"))
-                        .map(OptionMapping::getAsInt)
-                        .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
+                try{
+                    int port = Optional.ofNullable(event.getOption("port"))
+                            .map(OptionMapping::getAsInt)
+                            .orElseThrow(() -> new IllegalArgumentException("포트가 필요합니다."));
 
-                if (port < 1 || port > 65535) {
-                    event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
-                    return;
+                    if (port < 1 || port > 65535) {
+                        event.reply("❌ 유효하지 않은 포트 번호입니다. 1 ~ 65535 사이여야 합니다.").setEphemeral(true).queue();
+                        return;
+                    }
+
+                    String result = gcpService.deleteFirewallRule(userId, guildId, port);
+                    event.reply(result).queue();
+                } catch (RuntimeException e){
+                    event.reply("❌ " + e.getMessage()).queue();
                 }
-
-                String result = gcpService.deleteFirewallRule(userId, guildId, port);
-                event.reply(result).queue();
             }
             default -> event.reply("❌ 지원하지 않는 명령어입니다.").queue();
         }

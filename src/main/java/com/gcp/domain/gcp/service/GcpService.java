@@ -6,12 +6,11 @@ import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.compute.v1.Project;
+
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.checkerframework.checker.units.qual.A;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.*;
@@ -19,9 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.ByteArrayInputStream;
+
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 @Service
@@ -54,8 +52,8 @@ public class GcpService {
 
             return "🚀 `" + vmName + "` VM을 실행했습니다!";
         } catch (Exception e) {
-            log.error("VM 실행 오류", e);
-            return "❌ `" + vmName + "` VM 실행 실패!";
+            log.error("❌ VM 시작 오류", e);
+            throw new RuntimeException("Compute API (start) 호출 도중 에러 발생: ", e);
         }
     }
 
@@ -77,7 +75,7 @@ public class GcpService {
             return "🛑 `" + vmName + "` VM을 중지했습니다!";
         } catch (Exception e) {
             log.error("❌ VM 중지 오류", e);
-            return "❌ `" + vmName + "` VM 중지 실패!";
+            throw new RuntimeException("Compute API (stop) 호출 도중 에러 발생: ", e);
         }
     }
 
@@ -103,7 +101,7 @@ public class GcpService {
 
         } catch (Exception e) {
             log.error("❌ instance_id 조회 실패", e);
-            return null;
+            throw new RuntimeException("Compute API (인스턴스 ID 조회) 호출 도중 에러 발생: ", e);
         }
     }
 
@@ -118,7 +116,7 @@ public class GcpService {
 
             String vmId = getInstanceId(userId, guildId, vmName, ZONE);
             if (vmId == null){
-                return List.of("❌ VM 인스턴스를 찾을 수 없습니다!");
+                throw new RuntimeException("현재 보유 중인 VM이 없습니다.");
             }
 
             String filter = String.format(
@@ -170,10 +168,7 @@ public class GcpService {
 
         } catch (Exception e) {
             log.error("❌ 로그 조회 오류", e);
-            List<String> errorMessage = new ArrayList<>();
-            errorMessage.add("❌ 로그 조회 실패!");
-
-            return errorMessage;
+            throw new RuntimeException("Logging API 호출 도중 에러 발생: ", e);
         }
     }
 
@@ -184,45 +179,55 @@ public class GcpService {
             return "💰 예상 비용: " + response;
         } catch (Exception e) {
             log.error("❌ 비용 조회 오류", e);
-            return "❌ 비용 조회 실패!";
+            throw new RuntimeException("CloudBilling API 호출 도중 에러 발생: ", e);
         }
     }
 
     @SneakyThrows
     public List<Map<String, String>> getVmList(String userId, String guildId) {
-        String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
-                PROJECT_ID, ZONE);
+        try {
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
+                    PROJECT_ID, ZONE);
 
-        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Authorization", "Bearer " + accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<String> entity = new HttpEntity<>(null, headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<String> entity = new HttpEntity<>(null, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        return parseVmResponse(response.getBody());
+            return parseVmResponse(response.getBody());
+        } catch (Exception e){
+            log.error("❌ VM 목록 조회 실패", e);
+            throw new RuntimeException("Compute API (인스턴스 목록 조회) 호출 도중 에러 발생: ", e);
+        }
     }
 
     public List<String> getProjectIds(String userId, String guildId) {
-        String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
-        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+        try {
+            String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
+            String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            headers.setContentType(MediaType.APPLICATION_JSON);
 
-        HttpEntity<String> entity = new HttpEntity<>(null, headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            HttpEntity<String> entity = new HttpEntity<>(null, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
 
-        JSONObject json = new JSONObject(response.getBody());
-        JSONArray projects = json.getJSONArray("projects");
+            JSONObject json = new JSONObject(response.getBody());
+            JSONArray projects = json.getJSONArray("projects");
 
-        List<String> projectIds = new ArrayList<>();
-        for (int i = 0; i < projects.length(); i++) {
-            projectIds.add(projects.getJSONObject(i).getString("projectId"));
+            List<String> projectIds = new ArrayList<>();
+            for (int i = 0; i < projects.length(); i++) {
+                projectIds.add(projects.getJSONObject(i).getString("projectId"));
+            }
+            return projectIds;
+        } catch (Exception e) {
+            log.error("❌ 프로젝트 ID 조회 중 에러 발생", e);
+            throw new RuntimeException("CloudResourceManager API 호출 도중 에러 발생: ", e);
         }
-        return projectIds;
     }
 
     public List<ProjectZoneDto> getActiveInstanceZones(String userId, String guildId) {
@@ -261,7 +266,8 @@ public class GcpService {
                 activeZones.add(dto);
 
             } catch (Exception e) {
-                log.warn("프로젝트 Zone 조회 실패 {}: {}", projectId, e.getMessage());
+                log.warn("❌ 프로젝트 Zone 조회 실패 {}", projectId, e);
+                throw new RuntimeException("Compute API (VM Zone 조회) 호출 도중 에러 발생: ", e);
             }
         }
 
@@ -365,7 +371,7 @@ public class GcpService {
             );
         } catch (Exception e) {
             log.error("❌ VM 생성 오류", e);
-            return "❌ `" + vmName + "` VM 생성 실패!";
+            throw new RuntimeException("Compute API (인스턴스 생성) 호출 도중 에러 발생: ", e);
         }
     }
     public List<Map<String, Object>> getFirewallRules(String userId, String guildId) {
@@ -410,7 +416,7 @@ public class GcpService {
 
         } catch (Exception e) {
             log.error("❌ 방화벽 규칙 조회 오류", e);
-            return List.of(Map.of("error", "방화벽 규칙 조회 실패"));
+            throw new RuntimeException("Compute API (방화벽 규칙 조회) 호출 도중 에러 발생: ", e);
         }
     }
     public String createFirewallRule(String userId, String guildId, int port, List<String> sourceRanges) {
@@ -451,7 +457,7 @@ public class GcpService {
             return "⚠️ 이미 포트 " + port + " 에 대한 방화벽 규칙이 존재합니다.";
         } catch (Exception e) {
             log.error("❌ 방화벽 규칙 생성 실패", e);
-            return "❌ 방화벽 규칙 생성 중 오류가 발생했습니다.";
+            throw new RuntimeException("Compute API (방화벽 규칙 생성) 호출 도중 에러 발생: ", e);
         }
     }
 
@@ -477,7 +483,7 @@ public class GcpService {
             return "⚠️ 포트 " + port + " 에 대한 방화벽 규칙이 존재하지 않습니다.";
         } catch (Exception e) {
             log.error("❌ 방화벽 규칙 삭제 실패", e);
-            return "❌ 방화벽 규칙 삭제 중 오류가 발생했습니다.";
+            throw new RuntimeException("Compute API (방화벽 규칙 삭제) 호출 도중 에러 발생: ", e);
         }
     }
 }
