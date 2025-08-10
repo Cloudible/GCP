@@ -4,11 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
+import com.gcp.domain.gcp.util.GcpImageUtil;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import org.springframework.stereotype.Service;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -27,6 +30,7 @@ public class GcpBotService extends ListenerAdapter {
     private final GcpService gcpService;
     private final DiscordUserService discordUserService;
     private final GcpProjectCommandService gcpProjectCommandService;
+    private final GcpImageUtil gcpImageUtil;
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
@@ -156,10 +160,11 @@ public class GcpBotService extends ListenerAdapter {
             }
             case "list" -> event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
             case "create" -> {
+
                 try {
                     String vmName = getRequiredOption(event, "vm_name");
                     String machineType = getRequiredOption(event, "machine_type");
-                    String osImage = getRequiredOption(event, "os_image");
+                    String osFamily= getRequiredOption(event, "os_image");
                     int bootDiskGb = Integer.parseInt(getRequiredOption(event, "boot_disk_gb"));
                     boolean allowHttp = Boolean.parseBoolean(getRequiredOption(event, "allow_http"));
                     boolean allowHttps = Boolean.parseBoolean(getRequiredOption(event, "allow_https"));
@@ -169,7 +174,7 @@ public class GcpBotService extends ListenerAdapter {
                         return;
                     }
 
-                    String result = gcpService.createVM(userId, guildId, vmName, machineType, osImage, bootDiskGb, allowHttp, allowHttps);
+                    String result = gcpService.createVM(userId, guildId, vmName, machineType, osFamily, bootDiskGb, allowHttp, allowHttps);
                     event.reply(result).queue();
                 } catch (Exception e) {
                     event.reply("❌ VM 생성 중 오류 발생: " + e.getMessage()).queue();
@@ -242,4 +247,26 @@ public class GcpBotService extends ListenerAdapter {
         }
         return option.getAsString();
     }
+    @Override
+    public void onCommandAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event) {
+        if (!event.getName().equals("gcp")) return;
+        if (!"create".equals(event.getSubcommandName())) return;
+        if (!"os_image".equals(event.getFocusedOption().getName())) return;
+
+        String typed = event.getFocusedOption().getValue(); // 사용자가 입력 중인 값 (프리픽스)
+
+        // family 키 목록 불러와 필터링 (대소문자 무시 contains)
+        List<String> all = gcpImageUtil.listFamilyKeys();
+        String lower = typed == null ? "" : typed.toLowerCase();
+
+        List<Command.Choice> suggestions = all.stream()
+                .filter(k -> k.toLowerCase().contains(lower))
+                .sorted()
+                .limit(25) // Discord 제한
+                .map(k -> new Command.Choice(k, k))
+                .toList();
+
+        event.replyChoices(suggestions).queue();
+    }
+
 }
