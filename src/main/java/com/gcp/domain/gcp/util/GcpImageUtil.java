@@ -52,11 +52,16 @@ public class GcpImageUtil {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
 
         try {
             ResponseEntity<String> resp = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
             JsonNode image = mapper.readTree(resp.getBody());
-            return image.path("selfLink").asText();
+            String selfLink = image.path("selfLink").asText(null);
+            if (selfLink == null || selfLink.isBlank()) {
+                throw new IllegalStateException("selfLink 파싱 실패: " + image.toString());
+            }
+            return selfLink;
         } catch (Exception e) {
             throw new RuntimeException("family 최신 이미지 조회 실패: " + familyLink, e);
         }
