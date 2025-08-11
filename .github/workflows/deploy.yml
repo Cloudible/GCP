@@ -2,7 +2,7 @@ name: CI / CD
 
 on:
   push:
-    branches: [main]
+    branches: [fix/#16-exception-handling-fix]
 
 jobs:
   CI:
