@@ -7,6 +7,9 @@ import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
 
+import com.gcp.domain.gcp.util.GcpImageUtil;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.compute.v1.Project;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,8 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.util.*;
 
+import static org.json.XMLTokener.entity;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -32,6 +37,7 @@ public class GcpService {
     private final GcpProjectRepository gcpProjectRepository;
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
+    private final GcpImageUtil gcpImageUtil;
 
 
     public String startVM(String userId, String guildId, String vmName) {
@@ -310,17 +316,12 @@ public class GcpService {
         log.info("📢 GCP VM 상태 변경 감지 알림 활성화!");
     }
 
-    public String createVM(String userId, String guildId, String vmName, String machineType, String osImage, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
+    public String createVM(String userId, String guildId, String vmName, String machineType, String osFamilyKeyOrLink, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
         try {
             String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances", PROJECT_ID, ZONE);
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+            String sourceImage = gcpImageUtil.resolveLatestSelfLink(accessToken, osFamilyKeyOrLink, "debian-12");
 
-            Map<String, String> imageMap = Map.of(
-                    "debian-11", "projects/debian-cloud/global/images/family/debian-11",
-                    "ubuntu-2204", "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts",
-                    "centos-7", "projects/centos-cloud/global/images/family/centos-7"
-            );
-            String image = imageMap.getOrDefault(osImage, imageMap.get("debian-11"));
 
             List<String> tags = new ArrayList<>();
             if (allowHttp) tags.add("http-server");
@@ -339,7 +340,7 @@ public class GcpService {
                             "autoDelete", true,
                             "initializeParams", Map.of(
                                     "diskSizeGb", bootDiskGb,
-                                    "sourceImage", image
+                                    "sourceImage", sourceImage
                             )
                     )
             ));
@@ -367,7 +368,7 @@ public class GcpService {
             restTemplate.postForEntity(url, entity, String.class);
 
             return "🆕 `" + vmName + "` VM 인스턴스 생성 중 (OS: %s, 디스크: %dGB, HTTP: %s, HTTPS: %s)".formatted(
-                    osImage, bootDiskGb, allowHttp, allowHttps
+                    osFamilyKeyOrLink, bootDiskGb, allowHttp, allowHttps
             );
         } catch (Exception e) {
             log.error("❌ VM 생성 오류", e);
