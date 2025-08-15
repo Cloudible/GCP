@@ -32,6 +32,4 @@ public interface DiscordUserRepository extends JpaRepository<DiscordUser, Long> 
     @Query("SELECT u.accessTokenExpiration FROM DiscordUser u WHERE u.userId = :userId AND u.guildId = :guildId")
     Optional<LocalDateTime> findAccessTokenExpByUserIdAndGuildId(@Param("userId") String userId,
                                                                  @Param("guildId") String guildId);
-
-
 }

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
+import com.gcp.domain.discord.service.DiscordUserService;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
 
@@ -23,6 +24,7 @@ import org.springframework.web.client.RestTemplate;
 
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 
 import static org.json.XMLTokener.entity;
@@ -38,6 +40,8 @@ public class GcpService {
     private static final String ZONE = "us-central1-f";
     private static final String PROJECT_ID = "sincere-elixir-464606-j1";
     private final GcpImageUtil gcpImageUtil;
+
+    private final DiscordUserService discordUserService;
 
 
     public String startVM(String userId, String guildId, String vmName) {
@@ -129,7 +133,7 @@ public class GcpService {
                     "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"%s\" AND severity>=ERROR",
                     vmId
             );
-            
+
             Map<String, Object> body = Map.of(
                     "resourceNames", List.of("projects/sincere-elixir-464606-j1"),
                     "pageSize", 50,
@@ -213,7 +217,15 @@ public class GcpService {
     public List<String> getProjectIds(String userId, String guildId) {
         try {
             String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
+            LocalDateTime tokenExp = discordUserRepository.findAccessTokenExpByUserIdAndGuildId(userId, guildId).orElseThrow();
+            if(tokenExp.isBefore(LocalDateTime.now())){
+                DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+                Map<String, Object> reissued = discordUserService.refreshAccessToken(discordUser.getGoogleRefreshToken());
+                discordUser.updateAccessToken((String) reissued.get("access_token"));
+                discordUser.updateAccessTokenExpiration((LocalDateTime) reissued.get("expires_in"));
+            }
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
