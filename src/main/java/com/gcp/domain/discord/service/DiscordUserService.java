@@ -3,6 +3,8 @@ package com.gcp.domain.discord.service;
 import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,9 +22,16 @@ import static org.springframework.security.oauth2.core.endpoint.OAuth2ParameterN
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DiscordUserService {
     private final DiscordUserRepository discordUserRepository;
     private final RestTemplate restTemplate;
+
+    @Value("${GOOGLE_CLIENT_ID}")
+    private String googleClientId;
+
+    @Value("${GOOGLE_CLIENT_SECRET}")
+    private String googleClientSecret;
 
 
     public boolean insertDiscordUser(String userId, String userName, String guildId, String guildName){
@@ -36,10 +45,11 @@ public class DiscordUserService {
 
     public Map<String, Object> refreshAccessToken(String refreshToken) {
         String url = "https://oauth2.googleapis.com/token";
+        log.info("{}", refreshToken);
 
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-        body.add("client_id", CLIENT_ID);
-        body.add("client_secret", CLIENT_SECRET);
+        body.add("client_id", googleClientId);
+        body.add("client_secret", googleClientSecret);
         body.add("refresh_token", refreshToken);
         body.add("grant_type", "refresh_token");
 
