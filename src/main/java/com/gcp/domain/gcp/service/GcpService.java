@@ -9,8 +9,7 @@ import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
 
 import com.gcp.domain.gcp.util.GcpImageUtil;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.compute.v1.Project;
+import com.gcp.domain.oauth2.util.TokenEncryptConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +18,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -27,11 +27,10 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 
-import static org.json.XMLTokener.entity;
-
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional
 public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -222,7 +221,7 @@ public class GcpService {
                 DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
                 Map<String, Object> reissued = discordUserService.refreshAccessToken(discordUser.getGoogleRefreshToken());
                 discordUser.updateAccessToken((String) reissued.get("access_token"));
-                discordUser.updateAccessTokenExpiration((LocalDateTime) reissued.get("expires_in"));
+                discordUser.updateAccessTokenExpiration(LocalDateTime.now().plusSeconds((Integer) reissued.get("expires_in")));
             }
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
 
