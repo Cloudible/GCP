@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcp.domain.discord.entity.DiscordUser;
 import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.discord.service.DiscordUserService;
+import com.gcp.domain.gcp.aop.RequiredValidToken;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
 import com.gcp.domain.gcp.repository.GcpProjectRepository;
 
 import com.gcp.domain.gcp.util.GcpImageUtil;
-import com.gcp.domain.oauth2.util.TokenEncryptConverter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +24,13 @@ import org.springframework.web.client.RestTemplate;
 
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
+@RequiredValidToken
 public class GcpService {
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -216,15 +216,7 @@ public class GcpService {
     public List<String> getProjectIds(String userId, String guildId) {
         try {
             String url = "https://cloudresourcemanager.googleapis.com/v1/projects";
-            LocalDateTime tokenExp = discordUserRepository.findAccessTokenExpByUserIdAndGuildId(userId, guildId).orElseThrow();
-            if(tokenExp.isBefore(LocalDateTime.now())){
-                DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
-                Map<String, Object> reissued = discordUserService.refreshAccessToken(discordUser.getGoogleRefreshToken());
-                discordUser.updateAccessToken((String) reissued.get("access_token"));
-                discordUser.updateAccessTokenExpiration(LocalDateTime.now().plusSeconds((Integer) reissued.get("expires_in")));
-            }
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
-
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -386,6 +378,7 @@ public class GcpService {
             throw new RuntimeException("Compute API (인스턴스 생성) 호출 도중 에러 발생: ", e);
         }
     }
+
     public List<Map<String, Object>> getFirewallRules(String userId, String guildId) {
         try {
             String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", PROJECT_ID);
