@@ -2,7 +2,7 @@ name: CI / CD
 
 on:
   push:
-    branches: [feat/#19-access-token-reissue]
+    branches: [main]
 
 jobs:
   CI:
