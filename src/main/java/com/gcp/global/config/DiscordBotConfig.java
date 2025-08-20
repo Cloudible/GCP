@@ -38,6 +38,19 @@ public class DiscordBotConfig {
                 new OptionData(OptionType.STRING, "os_image", "OS 이미지 선택", true)
                         .setAutoComplete(true);
 
+        OptionData projectIdOption =
+                new OptionData(OptionType.STRING, "project_id", "프로젝트 ID 입력", true)
+                        .setAutoComplete(true);
+
+
+        OptionData regionOption =
+                new OptionData(OptionType.STRING, "region", "Region 입력", true)
+                        .setAutoComplete(true);
+
+        OptionData zoneOption =
+                new OptionData(OptionType.STRING, "zone", "Zone 입력", true)
+                        .setAutoComplete(true);
+
         jda.updateCommands().addCommands(
                         Commands.slash("gcp", "GCP 관련 명령어")
                                 .addSubcommands(
@@ -48,26 +61,38 @@ public class DiscordBotConfig {
                                                 .addOption(OptionType.STRING, "project_id", "등록하고자 하는 프로젝트 ID", true),
                                         new SubcommandData("zone-list", "프로젝트 내 VM Zone 목록 조회"),
                                         new SubcommandData("start", "VM 시작")
+                                                .addOptions(projectIdOption)
+                                                .addOptions(zoneOption)
                                                 .addOption(OptionType.STRING, "vm_name", "시작할 VM 이름", true),
                                         new SubcommandData("stop", "VM 정지")
+                                                .addOptions(projectIdOption)
+                                                .addOptions(zoneOption)
                                                 .addOption(OptionType.STRING, "vm_name", "정지할 VM 이름", true),
                                         new SubcommandData("logs", "VM 로그 조회")
+                                                .addOptions(projectIdOption)
+                                                .addOptions(zoneOption)
                                                 .addOption(OptionType.STRING, "vm_name", "로그를 볼 VM 이름", true),
-                                        new SubcommandData("cost", "예상 비용 조회"),
-                                        new SubcommandData("notify", "알림 활성화"),
-                                        new SubcommandData("list", "VM 목록 조회"),
+                                        new SubcommandData("list", "VM 목록 조회")
+                                                .addOptions(projectIdOption)
+                                                .addOptions(zoneOption),
                                         new SubcommandData("create", "VM 생성")
                                                 .addOption(OptionType.STRING, "vm_name", "VM 이름", true)
                                                 .addOption(OptionType.STRING, "machine_type", "머신 타입", true)
+                                                .addOptions(projectIdOption)
+                                                .addOptions(regionOption)
+                                                .addOptions(zoneOption)
                                                 .addOptions(osFamilyOption)
                                                 .addOption(OptionType.INTEGER, "boot_disk_gb", "부트 디스크 크기(GB)", true)
                                                 .addOption(OptionType.BOOLEAN, "allow_http", "HTTP 허용 여부", true)
                                                 .addOption(OptionType.BOOLEAN, "allow_https", "HTTPS 허용 여부", true),
-                                        new SubcommandData("firewall-list","방화벽 리스트 조회"),
+                                        new SubcommandData("firewall-list","방화벽 리스트 조회")
+                                                .addOptions(projectIdOption),
                                         new SubcommandData("firewall-create", "방화벽 규칙 생성")
+                                                .addOptions(projectIdOption)
                                                 .addOption(OptionType.INTEGER, "port", "허용할 포트 번호", true)
                                                 .addOption(OptionType.STRING, "source_ranges", "허용할 IP 범위 (쉼표로 구분)", false),
                                         new SubcommandData("firewall-delete", "특정 포트를 TCP 기준으로 방화벽에서 삭제")
+                                                .addOptions(projectIdOption)
                                                 .addOption(OptionType.INTEGER, "port", "삭제할 TCP 포트", true)
 
                                 )
