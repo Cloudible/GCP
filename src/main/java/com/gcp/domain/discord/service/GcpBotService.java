@@ -1,10 +1,14 @@
 package com.gcp.domain.discord.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.gcp.domain.discord.entity.DiscordUser;
+import com.gcp.domain.discord.repository.DiscordUserRepository;
 import com.gcp.domain.gcp.dto.ProjectZoneDto;
+import com.gcp.domain.gcp.repository.GcpProjectRepository;
 import com.gcp.domain.gcp.service.GcpProjectCommandService;
 import com.gcp.domain.gcp.service.GcpService;
 import com.gcp.domain.gcp.util.GcpImageUtil;
+import com.gcp.domain.gcp.util.GcpZones;
 import lombok.RequiredArgsConstructor;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.User;
@@ -18,15 +22,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class GcpBotService extends ListenerAdapter {
+    private final GcpProjectRepository gcpProjectRepository;
+    private final DiscordUserRepository discordUserRepository;
     private final GcpService gcpService;
     private final DiscordUserService discordUserService;
     private final GcpProjectCommandService gcpProjectCommandService;
@@ -106,34 +109,35 @@ public class GcpBotService extends ListenerAdapter {
                     event.reply(e.getMessage()).queue();
                 }
             }
-
             case "zone-list" -> {
-                try {
-                    List<ProjectZoneDto> result = gcpService.getActiveInstanceZones(userId, guildId);
+                    try {
+                        List<ProjectZoneDto> result = gcpService.getActiveInstanceZones(userId, guildId);
 
-                    StringBuilder message = new StringBuilder("📦 **프로젝트별 인스턴스 활성 ZONE 목록**\n\n");
-                    for (ProjectZoneDto dto : result) {
-                        message.append("🔹 **")
-                                .append(dto.projectId())
-                                .append("**\n");
+                        StringBuilder message = new StringBuilder("📦 **프로젝트별 인스턴스 활성 ZONE 목록**\n\n");
+                        for (ProjectZoneDto dto : result) {
+                            message.append("🔹 **")
+                                    .append(dto.projectId())
+                                    .append("**\n");
 
-                        for (String zone : dto.zoneList()) {
-                            message.append("↳ ").append(zone).append("\n");
+                            for (String zone : dto.zoneList()) {
+                                message.append("- ").append(zone).append("\n");
+                            }
+
+                            message.append("\n");
+                            event.reply(message.toString()).queue();
                         }
 
-                        message.append("\n");
+                    } catch (Exception e) {
+                        event.reply("❌ 오류 발생: " + e.getMessage()).queue();
                     }
-
-                    event.reply(message.toString()).queue();
-                } catch (Exception e) {
-                    event.reply("❌ 오류 발생: " + e.getMessage()).queue();
-                }
             }
 
             case "start" -> {
                 try{
+                    String projectId = getRequiredOption(event, "project_id");
+                    String zone = getRequiredOption(event, "zone");
                     String vmName = getRequiredOption(event, "vm_name");
-                    event.reply(gcpService.startVM(userId, guildId, vmName)).queue();
+                    event.reply(gcpService.startVM(userId, guildId, vmName, projectId, zone)).queue();
                 } catch (RuntimeException e){
                     event.reply("❌ " + e.getMessage()).queue();;
                 }
@@ -141,67 +145,77 @@ public class GcpBotService extends ListenerAdapter {
             case "stop" -> {
                 try {
                     String vmName = getRequiredOption(event, "vm_name");
-                    event.reply(gcpService.stopVM(userId, guildId, vmName)).queue();
+                    String projectId = getRequiredOption(event, "project_id");
+                    String zone = getRequiredOption(event, "zone");
+                    event.reply(gcpService.stopVM(userId, guildId, vmName, projectId, zone)).queue();
                 } catch (RuntimeException e){
                     event.reply("❌ " + e.getMessage()).queue();
                 }
             }
             case "logs" -> {
-                try{
-                    String vmName = getRequiredOption(event, "vm_name");
-                    event.deferReply().queue();
+                event.deferReply().queue(hook -> {
+                    try {
+                        String vmName = getRequiredOption(event, "vm_name");
+                        String projectId = getRequiredOption(event, "project_id");
+                        String zone = getRequiredOption(event, "zone");
 
-                    List<String> logs = gcpService.getVmLogs(userId, guildId, vmName);
+                        List<String> logs = gcpService.getVmLogs(userId, guildId, vmName, projectId, zone);
 
-                    if (logs.isEmpty()) {
-                        event.getHook().sendMessage("📭 로그가 없습니다.").queue();
-                        return;
+                        if (logs.isEmpty()) {
+                            hook.editOriginal("📭 로그가 없습니다.").queue();
+                            return;
+                        }
+
+                        hook.editOriginal("📝 로그 출력 시작...").queue();
+
+                        for (String log : logs) {
+                            hook.sendMessage("```bash\n" + log + "\n```").queue();
+                        }
+                    } catch (Exception e) {
+                        hook.editOriginal("❌ " + e.getMessage()).queue();
                     }
-
-                    for (String log : logs) {
-                        event.getHook().sendMessage("```bash\n" + log + "\n```").queue();
-                    }
-                } catch (RuntimeException e){
-                    event.reply("❌ " + e.getMessage()).queue();
-                }
-            }
-            case "cost" -> event.reply(gcpService.getEstimatedCost()).queue();
-            case "notify" -> {
-                gcpService.enableVmNotifications();
-                event.reply("✅ GCP VM 상태 변경 시 알림을 받을 수 있습니다!").queue();
+                });
             }
             case "list" -> {
                 try {
-                    event.reply(gcpService.getVmList(userId, guildId).toString()).queue();
+                    String projectId = getRequiredOption(event, "project_id");
+                    String zone = getRequiredOption(event, "zone");
+                    event.reply(gcpService.getVmList(userId, guildId, projectId, zone).toString()).queue();
                 } catch (Exception e){
                     event.reply("보유 중인 인스턴스가 없습니다.").queue();
                 }
             }
             case "create" -> {
+                event.deferReply().queue(hook -> {
+                    try {
+                        String vmName = getRequiredOption(event, "vm_name");
+                        String machineType = getRequiredOption(event, "machine_type");
+                        String osFamily = getRequiredOption(event, "os_image");
+                        String projectId = getRequiredOption(event, "project_id");
+                        String zone = getRequiredOption(event, "zone");
+                        int bootDiskGb = Integer.parseInt(getRequiredOption(event, "boot_disk_gb"));
+                        boolean allowHttp = Boolean.parseBoolean(getRequiredOption(event, "allow_http"));
+                        boolean allowHttps = Boolean.parseBoolean(getRequiredOption(event, "allow_https"));
 
-                try {
-                    String vmName = getRequiredOption(event, "vm_name");
-                    String machineType = getRequiredOption(event, "machine_type");
-                    String osFamily= getRequiredOption(event, "os_image");
-                    int bootDiskGb = Integer.parseInt(getRequiredOption(event, "boot_disk_gb"));
-                    boolean allowHttp = Boolean.parseBoolean(getRequiredOption(event, "allow_http"));
-                    boolean allowHttps = Boolean.parseBoolean(getRequiredOption(event, "allow_https"));
+                        if (bootDiskGb <= 9) {
+                            hook.editOriginal("❌ 디스크 크기는 10 이상이 되어야 합니다.").queue();
+                            return;
+                        }
+                        gcpService.createVM(userId, guildId, vmName, machineType, projectId, zone,
+                                osFamily, bootDiskGb, allowHttp, allowHttps);
 
-                    if (bootDiskGb <= 9) {
-                        event.reply("❌ 디스크 크기는 10 이상이 되어야 합니다.").queue();
-                        return;
+                        hook.editOriginal("⚙️ `" + vmName + "` 인스턴스 생성 완료!").queue();
+                    } catch (Exception e) {
+                        hook.editOriginal("❌ " + e.getMessage()).queue();
                     }
-
-                    String result = gcpService.createVM(userId, guildId, vmName, machineType, osFamily, bootDiskGb, allowHttp, allowHttps);
-                    event.reply(result).queue();
-                } catch (Exception e) {
-                    event.reply("❌ " + e.getMessage()).queue();
-                }
+                });
             }
             case "firewall-list" -> {
-                try{
+                try {
                     event.deferReply().queue();
-                    List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId);
+
+                    String projectId = getRequiredOption(event, "project_id");
+                    List<Map<String, Object>> rules = gcpService.getFirewallRules(userId, guildId, projectId);
 
                     if (rules.isEmpty()) {
                         event.getHook().sendMessage("📭 조회된 방화벽 규칙이 없습니다.").queue();
@@ -242,7 +256,9 @@ public class GcpBotService extends ListenerAdapter {
 
                     List<String> sourceRanges = List.of(ipRangeRaw.split("\\s*,\\s*"));
 
-                    String result = gcpService.createFirewallRule(userId, guildId, port, sourceRanges);
+                    String projectId = getRequiredOption(event, "project_id");
+
+                    String result = gcpService.createFirewallRule(userId, guildId, projectId, port, sourceRanges);
                     event.reply(result).queue();
                 } catch (RuntimeException e){
                     event.reply("❌ " + e.getMessage()).queue();
@@ -259,7 +275,9 @@ public class GcpBotService extends ListenerAdapter {
                         return;
                     }
 
-                    String result = gcpService.deleteFirewallRule(userId, guildId, port);
+                    String projectId = getRequiredOption(event, "project_id");
+
+                    String result = gcpService.deleteFirewallRule(userId, guildId, projectId, port);
                     event.reply(result).queue();
                 } catch (RuntimeException e){
                     event.reply("❌ " + e.getMessage()).queue();
@@ -276,26 +294,103 @@ public class GcpBotService extends ListenerAdapter {
         }
         return option.getAsString();
     }
+
     @Override
     public void onCommandAutoCompleteInteraction(CommandAutoCompleteInteractionEvent event) {
         if (!event.getName().equals("gcp")) return;
-        if (!"create".equals(event.getSubcommandName())) return;
-        if (!"os_image".equals(event.getFocusedOption().getName())) return;
 
-        String typed = event.getFocusedOption().getValue(); // 사용자가 입력 중인 값 (프리픽스)
+        String userId = event.getUser().getId();
+        String guildId = event.getGuild().getId();
 
-        // family 키 목록 불러와 필터링 (대소문자 무시 contains)
-        List<String> all = gcpImageUtil.listFamilyKeys();
-        String lower = typed == null ? "" : typed.toLowerCase();
+        String eventType = event.getSubcommandName();
+        String focused = event.getFocusedOption().getName();
 
-        List<Command.Choice> suggestions = all.stream()
-                .filter(k -> k.toLowerCase().contains(lower))
-                .sorted()
-                .limit(25) // Discord 제한
-                .map(k -> new Command.Choice(k, k))
-                .toList();
+        if("project_id".equals(focused)){
+            DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+            List<String> projectIds = gcpProjectRepository.findAllProjectIdsByDiscordUser(discordUser).orElseThrow();
 
-        event.replyChoices(suggestions).queue();
+            String userInput = event.getFocusedOption().getValue();
+
+            List<Command.Choice> choices = projectIds.stream()
+                    .filter(pid -> pid.startsWith(userInput))
+                    .limit(25)
+                    .map(pid -> new Command.Choice(pid, pid))
+                    .toList();
+
+            event.replyChoices(choices).queue();
+        }
+
+        if ("region".equals(focused)) {
+            String typed = event.getFocusedOption().getValue();
+            String lower = typed.toLowerCase();
+
+            List<Command.Choice> suggestions = GcpZones.REGIONS.keySet().stream()
+                    .filter(region -> region.toLowerCase().contains(lower))
+                    .sorted()
+                    .limit(25)
+                    .map(region -> new Command.Choice(region, region))
+                    .toList();
+
+            event.replyChoices(suggestions).queue();
+        }
+
+        if ("zone".equals(focused)) {
+            String typed = event.getFocusedOption().getValue();
+            String lower = typed.toLowerCase();
+            if ("create".equals(eventType)) {
+
+                // 이미 입력된 region 값 가져오기
+                String selectedRegion = Optional.ofNullable(event.getOption("region"))
+                        .map(OptionMapping::getAsString)
+                        .orElse("");
+
+                // region이 있으면 그 안의 zone만 필터링
+                List<String> candidateZones = selectedRegion.isEmpty()
+                        ? GcpZones.REGIONS.values().stream().flatMap(List::stream).toList()
+                        : GcpZones.REGIONS.getOrDefault(selectedRegion, List.of());
+
+                List<Command.Choice> suggestions = candidateZones.stream()
+                        .filter(zone -> zone.toLowerCase().contains(lower))
+                        .sorted()
+                        .limit(25)
+                        .map(zone -> new Command.Choice(zone, zone))
+                        .toList();
+
+                event.replyChoices(suggestions).queue();
+            } else{
+                String inputProject = Optional.ofNullable(event.getOption("project_id"))
+                        .map(OptionMapping::getAsString)
+                        .orElse("");
+
+                List<String> projectZones = gcpService.getProjectInstanceZones(userId, guildId, inputProject);
+
+                List<Command.Choice> suggestions = projectZones.stream()
+                        .filter(zone -> zone.toLowerCase().contains(lower))
+                        .sorted()
+                        .limit(25)
+                        .map(zone -> new Command.Choice(zone, zone))
+                        .toList();
+
+                event.replyChoices(suggestions).queue();
+            }
+        }
+
+        if("create".equals(eventType) && "os_image".contains(focused)){
+            String typed = event.getFocusedOption().getValue(); // 사용자가 입력 중인 값 (프리픽스)
+
+            // family 키 목록 불러와 필터링 (대소문자 무시 contains)
+            List<String> all = gcpImageUtil.listFamilyKeys();
+            String lower = typed.toLowerCase();
+
+            List<Command.Choice> suggestions = all.stream()
+                    .filter(k -> k.toLowerCase().contains(lower))
+                    .sorted()
+                    .limit(25) // Discord 제한
+                    .map(k -> new Command.Choice(k, k))
+                    .toList();
+
+            event.replyChoices(suggestions).queue();
+        }
     }
 
 }
