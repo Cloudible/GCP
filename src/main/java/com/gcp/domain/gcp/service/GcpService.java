@@ -24,6 +24,8 @@ import org.springframework.web.client.RestTemplate;
 
 
 import java.io.IOException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Service
@@ -36,18 +38,16 @@ public class GcpService {
     private final RestTemplate restTemplate = new RestTemplate();
     private final DiscordUserRepository discordUserRepository;
     private final GcpProjectRepository gcpProjectRepository;
-    private static final String ZONE = "us-central1-f";
-    private static final String PROJECT_ID = "sincere-elixir-464606-j1";
     private final GcpImageUtil gcpImageUtil;
 
     private final DiscordUserService discordUserService;
 
 
-    public String startVM(String userId, String guildId, String vmName) {
+    public String startVM(String userId, String guildId, String vmName, String projectId, String zone) {
         try {
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s/start",
-                    PROJECT_ID, ZONE, vmName
+                    projectId, zone, vmName
             );
 
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
@@ -66,11 +66,11 @@ public class GcpService {
         }
     }
 
-    public String stopVM(String userId, String guildId, String vmName) {
+    public String stopVM(String userId, String guildId, String vmName, String projectId, String zone) {
         try {
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s/stop",
-                    PROJECT_ID, ZONE, vmName
+                    projectId, zone, vmName
             );
 
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
@@ -88,13 +88,13 @@ public class GcpService {
         }
     }
 
-    public String getInstanceId(String userId, String guildId, String vmName, String zone) {
+    public String getInstanceId(String userId, String guildId, String vmName, String projectId, String zone) {
         try {
 
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             String url = String.format(
                     "https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances/%s",
-                    PROJECT_ID, zone, vmName
+                    projectId, zone, vmName
             );
 
             HttpHeaders headers = new HttpHeaders();
@@ -115,7 +115,7 @@ public class GcpService {
     }
 
 
-    public List<String> getVmLogs(String userId, String guildId, String vmName) {
+    public List<String> getVmLogs(String userId, String guildId, String vmName, String projectId, String zone) {
         try {
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             RestTemplate restTemplate = new RestTemplate();
@@ -123,18 +123,25 @@ public class GcpService {
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
-            String vmId = getInstanceId(userId, guildId, vmName, ZONE);
+            String vmId = getInstanceId(userId, guildId, vmName, projectId, zone);
+
             if (vmId == null){
                 throw new RuntimeException("현재 보유 중인 VM이 없습니다.");
             }
 
+            Instant now = Instant.now();
+            Instant weekAgo = now.minus(7, ChronoUnit.DAYS);
+
             String filter = String.format(
-                    "resource.type=\"gce_instance\" AND resource.labels.instance_id=\"%s\" AND severity>=ERROR",
-                    vmId
+                    "resource.type=\"gce_instance\" " +
+                            "AND resource.labels.instance_id=\"%s\" " +
+                            "AND timestamp >= \"%s\"",
+                    vmId,
+                    weekAgo.toString()
             );
 
             Map<String, Object> body = Map.of(
-                    "resourceNames", List.of("projects/sincere-elixir-464606-j1"),
+                    "resourceNames", List.of("projects/" + projectId),
                     "pageSize", 50,
                     "orderBy", "timestamp desc",
                     "filter", filter
@@ -147,26 +154,31 @@ public class GcpService {
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(response.getBody());
+            System.out.println(root.toString());
 
             List<String> sbList = new ArrayList<>();
             StringBuilder sb = new StringBuilder();
-            for (JsonNode entry : root.get("entries")) {
+            for (JsonNode entry : root.path("entries")) {
                 String time = entry.path("timestamp").asText();
                 String level = entry.path("severity").asText();
-                String message = entry.path("jsonPayload").path("message").asText();
+
+                // 여러 타입 중 있는 것 가져오기
+                String message = "";
+                if (entry.has("jsonPayload") && entry.get("jsonPayload").has("message")) {
+                    message = entry.get("jsonPayload").get("message").asText();
+                } else if (entry.has("textPayload")) {
+                    message = entry.get("textPayload").asText();
+                } else if (entry.has("protoPayload")) {
+                    message = entry.get("protoPayload").path("methodName").asText(); // 예: v1.compute.instances.setMetadata
+                }
 
                 String combinedMessage = String.format("[%s] [%s] %s%n", time, level, message);
 
-
-                // 디스코드에서 한 번에 출력 가능한 문자 수가 2000이라 기존 문자열 길이와 먼저 더해보고 2000보다 크면 기존 문자열은 반환.
-                // 새 메시지는 새로 할당된 sb에 추가.
-                if (sb.length() + combinedMessage.length() > 2000){
+                if (sb.length() + combinedMessage.length() > 2000) {
                     sbList.add(sb.toString());
                     sb = new StringBuilder();
                 }
-
                 sb.append(combinedMessage);
-
             }
 
             // 반복 이후에 sb에 메시지가 남아있을 수도 있으니 해당 메시지도 추가.
@@ -181,22 +193,12 @@ public class GcpService {
         }
     }
 
-    public String getEstimatedCost() {
-        try {
-            String url = String.format("https://cloudbilling.googleapis.com/v1/projects/%s/billingInfo", PROJECT_ID);
-            String response = restTemplate.getForObject(url, String.class);
-            return "💰 예상 비용: " + response;
-        } catch (Exception e) {
-            log.error("❌ 비용 조회 오류", e);
-            throw new RuntimeException("CloudBilling API 호출 도중 에러 발생: ", e);
-        }
-    }
 
     @SneakyThrows
-    public List<Map<String, String>> getVmList(String userId, String guildId) {
+    public List<Map<String, String>> getVmList(String userId, String guildId, String projectId, String zone) {
         try {
             String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances",
-                    PROJECT_ID, ZONE);
+                    projectId, zone);
 
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             HttpHeaders headers = new HttpHeaders();
@@ -284,6 +286,43 @@ public class GcpService {
     }
 
 
+    public List<String> getProjectInstanceZones(String userId, String guildId, String projectId) {
+        String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
+        DiscordUser discordUser = discordUserRepository.findByUserIdAndGuildId(userId, guildId).orElseThrow();
+
+
+            try {
+                String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/aggregated/instances", projectId);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setBearerAuth(accessToken);
+                HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+                ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+                JSONObject json = new JSONObject(response.getBody());
+                JSONObject items = json.getJSONObject("items");
+
+                List<String> zoneNames = new ArrayList<>();
+
+                for (String key : items.keySet()) {
+                    JSONObject zoneInfo = items.getJSONObject(key);
+                    if (zoneInfo.has("instances") && key.startsWith("zones/")) {
+                        String zoneName = key.substring("zones/".length());
+                        zoneNames.add(zoneName);
+                    }
+                }
+
+                return zoneNames;
+
+            } catch (Exception e) {
+                log.warn("❌ 프로젝트 Zone 조회 실패 {}", projectId, e);
+                throw new RuntimeException("Compute API (VM Zone 조회) 호출 도중 에러 발생: ", e);
+            }
+
+    }
+
+
+
     private static List<Map<String, String>> parseVmResponse(String json) throws IOException {
         List<Map<String, String>> vmList = new ArrayList<>();
         ObjectMapper objectMapper = new ObjectMapper();
@@ -315,13 +354,10 @@ public class GcpService {
         return vmList;
     }
 
-    public void enableVmNotifications() {
-        log.info("📢 GCP VM 상태 변경 감지 알림 활성화!");
-    }
-
-    public String createVM(String userId, String guildId, String vmName, String machineType, String osFamilyKeyOrLink, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
+    public void createVM(String userId, String guildId, String vmName, String machineType, String projectId, String zone,
+                           String osFamilyKeyOrLink, int bootDiskGb, boolean allowHttp, boolean allowHttps) {
         try {
-            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances", PROJECT_ID, ZONE);
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/zones/%s/instances", projectId, zone);
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId).orElseThrow();
             String sourceImage = gcpImageUtil.resolveLatestSelfLink(accessToken, osFamilyKeyOrLink, "debian-12");
 
@@ -332,7 +368,7 @@ public class GcpService {
 
             Map<String, Object> bodyMap = new LinkedHashMap<>();
             bodyMap.put("name", vmName);
-            bodyMap.put("machineType", String.format("zones/%s/machineTypes/%s", ZONE, machineType));
+            bodyMap.put("machineType", String.format("zones/%s/machineTypes/%s", zone, machineType));
             if (!tags.isEmpty()) {
                 bodyMap.put("tags", Map.of("items", tags));
             }
@@ -369,19 +405,15 @@ public class GcpService {
 
             HttpEntity<String> entity = new HttpEntity<>(body, headers);
             restTemplate.postForEntity(url, entity, String.class);
-
-            return "🆕 `" + vmName + "` VM 인스턴스 생성 중 (OS: %s, 디스크: %dGB, HTTP: %s, HTTPS: %s)".formatted(
-                    osFamilyKeyOrLink, bootDiskGb, allowHttp, allowHttps
-            );
         } catch (Exception e) {
             log.error("❌ VM 생성 오류", e);
             throw new RuntimeException("Compute API (인스턴스 생성) 호출 도중 에러 발생: ", e);
         }
     }
 
-    public List<Map<String, Object>> getFirewallRules(String userId, String guildId) {
+    public List<Map<String, Object>> getFirewallRules(String userId, String guildId, String projectId) {
         try {
-            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", PROJECT_ID);
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", projectId);
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
                     .orElseThrow();
 
@@ -424,12 +456,12 @@ public class GcpService {
             throw new RuntimeException("Compute API (방화벽 규칙 조회) 호출 도중 에러 발생: ", e);
         }
     }
-    public String createFirewallRule(String userId, String guildId, int port, List<String> sourceRanges) {
+    public String createFirewallRule(String userId, String guildId, String projectId, int port, List<String> sourceRanges) {
         try {
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
                     .orElseThrow();
 
-            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", PROJECT_ID);
+            String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls", projectId);
 
             String ruleName = "allow-custom-" + port;
 
@@ -466,7 +498,7 @@ public class GcpService {
         }
     }
 
-    public String deleteFirewallRule(String userId, String guildId, int port) {
+    public String deleteFirewallRule(String userId, String guildId, String projectId, int port) {
         try {
             String accessToken = discordUserRepository.findAccessTokenByUserIdAndGuildId(userId, guildId)
                     .orElseThrow();
@@ -474,7 +506,7 @@ public class GcpService {
             String ruleName = "allow-custom-" + port;
 
             String url = String.format("https://compute.googleapis.com/compute/v1/projects/%s/global/firewalls/%s",
-                    PROJECT_ID, ruleName);
+                    projectId, ruleName);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
